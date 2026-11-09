@@ -229,14 +229,29 @@ Produce a revised, optimized learning plan reflecting these adaptations, accompa
           "lastGenerated": "string"
         }
       }`,
-      fallbackGenerator
+      fallbackGenerator,
+      validate: (d: unknown) => {
+        const r = d as AdjustPlanResponse;
+        return !!r?.revisedPlan && Array.isArray(r.revisedPlan.weeks) && r.revisedPlan.weeks.length > 0 &&
+          r.revisedPlan.weeks.every(w => typeof w?.theme === 'string' && Array.isArray(w.tasks) && Array.isArray(w.targetSkills)) &&
+          Array.isArray(r.changes);
+      }
     });
 
     if (!result.success) {
       return NextResponse.json({ error: result.error, friendlyMessage: result.friendlyMessage }, { status: 500 });
     }
 
-    return NextResponse.json(result.data);
+    return NextResponse.json({
+      ...result.data,
+      revisedPlan: {
+        ...learningPlan,
+        ...result.data.revisedPlan,
+        portfolioProject: result.data.revisedPlan.portfolioProject?.title ? result.data.revisedPlan.portfolioProject : learningPlan.portfolioProject,
+        portfolioProjects: result.data.revisedPlan.portfolioProjects ?? learningPlan.portfolioProjects,
+        durationWeeks: result.data.revisedPlan.weeks.length
+      }
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });

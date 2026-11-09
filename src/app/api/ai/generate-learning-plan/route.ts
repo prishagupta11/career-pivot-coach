@@ -450,6 +450,12 @@ Respond ONLY with this JSON schema:
       prompt,
       systemInstruction,
       schemaDescription: '{ "durationWeeks": 4, "hoursPerWeek": 10, "weeks": [], "portfolioProjects": [] }',
+      validate: (d: unknown) => {
+        const p = d as GeneratePlanPayload;
+        return Array.isArray(p?.weeks) && p.weeks.length > 0 &&
+          p.weeks.every(w => typeof w?.theme === 'string' && Array.isArray(w.targetSkills) && Array.isArray(w.tasks)) &&
+          Array.isArray(p.portfolioProjects);
+      },
       fallbackGenerator
     });
 

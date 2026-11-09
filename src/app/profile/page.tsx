@@ -23,19 +23,20 @@ import {
   Check,
   UploadCloud
 } from 'lucide-react';
-import { getStoredState, saveStoredState, INITIAL_EMPTY_STATE } from '@/lib/storage';
+import { getStoredState, saveStoredState } from '@/lib/storage';
 import { TransferableSkill, UserProfile, SkillCategory } from '@/types';
 import AILoadingIndicator from '@/components/AILoadingIndicator';
 import Link from 'next/link';
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<UserProfile>(INITIAL_EMPTY_STATE.profile);
+  const [profile, setProfile] = useState<UserProfile>(() => getStoredState().profile);
   const [knownSkillsInput, setKnownSkillsInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCleaningOnly, setIsCleaningOnly] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [cleanedIsStale, setCleanedIsStale] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const speechSupported = useSyncExternalStore(
@@ -56,7 +57,6 @@ export default function ProfilePage() {
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
-    setProfile(getStoredState().profile);
     const handleStorage = () => {
       setProfile(getStoredState().profile);
     };
@@ -142,7 +142,10 @@ export default function ProfilePage() {
   // Run cleanup & extraction in one smooth flow
   const handleRunCleanupAndExtraction = async (overrideRawText?: string, fromResume = false) => {
     if (!profile) return;
-    const inputNarrative = overrideRawText !== undefined ? overrideRawText : (profile.cleanedSpeech?.trim() || profile.rawSpeech?.trim());
+    const useCleaned = !cleanedIsStale && Boolean(profile.cleanedSpeech?.trim());
+    const inputNarrative = overrideRawText !== undefined 
+      ? overrideRawText 
+      : (useCleaned ? profile.cleanedSpeech.trim() : profile.rawSpeech?.trim());
     if (!inputNarrative) {
       setStatusMessage({ text: 'Please speak, paste your background narrative, or upload a resume first.', type: 'error' });
       return;
@@ -157,7 +160,7 @@ export default function ProfilePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cleanedSpeech: overrideRawText ? undefined : (profile.cleanedSpeech?.trim() || undefined),
+          cleanedSpeech: overrideRawText || !useCleaned ? undefined : profile.cleanedSpeech?.trim(),
           rawSpeech: overrideRawText || profile.rawSpeech?.trim() || undefined,
           speechText: inputNarrative,
           currentRole: fromResume ? undefined : profile.currentRole,
@@ -202,6 +205,7 @@ export default function ProfilePage() {
       }
 
       setProfile(updated);
+      setCleanedIsStale(false);
 
       // Auto-save initial extracted state
       const state = getStoredState();
@@ -358,6 +362,7 @@ export default function ProfilePage() {
         lastUpdated: new Date().toISOString()
       };
       setProfile(updated);
+      setCleanedIsStale(false);
 
       const state = getStoredState();
       saveStoredState({ ...state, profile: updated });
