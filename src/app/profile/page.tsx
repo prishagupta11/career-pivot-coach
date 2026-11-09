@@ -18,7 +18,6 @@ import {
   Wrench, 
   Layers, 
   BookOpen,
-  ArrowUpDown,
   Sliders,
   Check,
   UploadCloud
@@ -218,7 +217,7 @@ export default function ProfilePage() {
         });
       } else {
         setStatusMessage({ 
-          text: 'Speech cleaned & tidy profile extracted! Review the side-by-side comparison and translated skills below.', 
+          text: 'Speech cleaned & tidy profile extracted! Review your extracted profile and translated skills below.', 
           type: 'success' 
         });
       }
@@ -795,83 +794,13 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* SECTION 2: Side-by-Side Raw vs. Clean Version (Editable before saving) */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <ArrowUpDown size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
-              <span>2. Raw vs. Clean Narrative Comparison</span>
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Inspect the raw spoken input and the AI-cleaned version side by side. You can edit either column before saving.
-            </p>
-          </div>
-          <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/80 px-2.5 py-1 rounded-lg">
-            Side-by-Side Review
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
-          {/* Left Column: Raw Version */}
-          <div className="flex flex-col justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                  <Mic size={14} className="text-slate-400 shrink-0" />
-                  <span>Raw Spoken / Pasted Version</span>
-                </span>
-                <span className="text-[11px] text-slate-400">
-                  {profile.rawSpeech ? `${profile.rawSpeech.split(/\s+/).filter(Boolean).length} words` : 'Empty'}
-                </span>
-              </div>
-              <textarea
-                rows={9}
-                value={profile.rawSpeech}
-                onChange={(e) => setProfile({ ...profile, rawSpeech: e.target.value })}
-                placeholder="Raw spoken audio with fillers ('um', 'you know', 'like') will appear here..."
-                className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              />
-            </div>
-            <p className="text-[11px] text-slate-400 mt-2">
-              Editable. May include hesitations, verbal fillers, or conversational tangents.
-            </p>
-          </div>
-
-          {/* Right Column: Clean Version */}
-          <div className="flex flex-col justify-between p-4 rounded-xl border border-emerald-200/80 dark:border-emerald-900/60 bg-emerald-50/20 dark:bg-emerald-950/10">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
-                  <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span>Cleaned & Polished Version</span>
-                </span>
-                <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
-                  {profile.cleanedSpeech ? `${profile.cleanedSpeech.split(/\s+/).filter(Boolean).length} words (Polished)` : 'Awaiting cleanup'}
-                </span>
-              </div>
-              <textarea
-                rows={9}
-                value={profile.cleanedSpeech}
-                onChange={(e) => setProfile({ ...profile, cleanedSpeech: e.target.value })}
-                placeholder="Cleaned, concise, professional English narrative without verbal fillers or false starts..."
-                className="w-full p-3 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-              />
-            </div>
-            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-2">
-              Editable. Verbal crutches stripped and self-corrections resolved into clean professional phrasing.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* SECTION 3: Tidy Profile Extraction (Current Role, Years Experience, Skills, Tools, Achievements, Target Role) */}
+      {/* SECTION 2: Tidy Profile Extraction (Current Role, Years Experience, Skills, Tools, Achievements, Target Role) */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Briefcase size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
-              <span>3. Extracted Tidy Profile</span>
+              <span>2. Extracted Tidy Profile</span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Structured summary of role, experience, demonstrated skills, tools, and quantifiable achievements.
@@ -1069,7 +998,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* SECTION 4: Skills Translator (Mapping old experience to skills that matter in target role) */}
+      {/* SECTION 3: Skills Translator (Mapping old experience to skills that matter in target role) */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
           <div>
@@ -1204,7 +1133,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* SECTION 5: Save All & Bottom Actions */}
+      {/* SECTION 4: Save All & Bottom Actions */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
