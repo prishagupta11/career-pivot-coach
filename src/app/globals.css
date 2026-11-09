@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+}
+
+/* Hard guard against unconstrained SVG icons across the app */
+svg {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+svg.lucide {
+  width: 1rem;
+  height: 1rem;
+  max-width: 100%;
+  flex-shrink: 0;
+}
