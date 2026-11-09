@@ -109,7 +109,7 @@ export default function ApplicationsPage() {
       `Continue targeting roles closely aligned with your transferable skills to start surfacing meaningful pipeline signals.`
     ],
     nextTenApplicationsSuggestion: {
-      focusRoleTypes: [state?.profile?.targetRole || 'Junior Data Analyst', 'Operations Analyst'],
+      focusRoleTypes: [state?.profile?.targetRole || 'Target Role', 'Operations Analyst'],
       focusCompanySizes: ['Mid-size (51-250)'],
       focusRemoteTypes: ['Hybrid', 'Remote'],
       focusSources: ['LinkedIn', 'Referral'],
@@ -214,94 +214,6 @@ export default function ApplicationsPage() {
     setState(updatedState);
   };
 
-  // Quick Demo Seeders
-  const handleLoadSampleApplications = () => {
-    const samples: JobApplication[] = [
-      {
-        id: `app-sample-1`,
-        company: 'HealthMetrics Solutions',
-        title: 'Junior Data Analyst',
-        roleTitle: 'Junior Data Analyst',
-        roleType: 'Data Analyst',
-        companySize: 'Mid-size (51-250)',
-        remote: 'Hybrid',
-        source: 'LinkedIn',
-        date: '2026-10-25',
-        status: 'Screen',
-        notes: 'Recruiter reached out after seeing Tableau Public dashboard.'
-      },
-      {
-        id: `app-sample-2`,
-        company: 'RetailScale Commerce',
-        title: 'Data Analyst I',
-        roleTitle: 'Data Analyst I',
-        roleType: 'Data Analyst',
-        companySize: 'Enterprise (250+)',
-        remote: 'Remote',
-        source: 'LinkedIn',
-        date: '2026-10-26',
-        status: 'Applied',
-        notes: 'Requires Power BI and SQL. Submitted portfolio link.'
-      },
-      {
-        id: `app-sample-3`,
-        company: 'FinEdge Logistics',
-        title: 'Operations Analyst',
-        roleTitle: 'Operations Analyst',
-        roleType: 'Operations Analyst',
-        companySize: 'Mid-size (51-250)',
-        remote: 'Remote',
-        source: 'Referral',
-        date: '2026-10-27',
-        status: 'Interview',
-        notes: 'First round technical screen scheduled for Thursday.'
-      },
-      {
-        id: `app-sample-4`,
-        company: 'CivicData Labs',
-        title: 'Junior Research Analyst',
-        roleTitle: 'Junior Research Analyst',
-        roleType: 'Research Analyst',
-        companySize: 'Startup (1-50)',
-        remote: 'Remote',
-        source: 'Job Board',
-        date: '2026-10-15',
-        status: 'Rejected',
-        notes: 'Heavy Python/R requirement not yet fully met.'
-      },
-      {
-        id: `app-sample-5`,
-        company: 'GlobalPeak Financial',
-        title: 'Data Analytics Specialist',
-        roleTitle: 'Data Analytics Specialist',
-        roleType: 'Data Analyst',
-        companySize: 'Enterprise (250+)',
-        remote: 'On-site',
-        source: 'Company Website',
-        date: '2026-10-20',
-        status: 'Applied',
-        notes: 'Corporate finance analytics team. Advanced Excel requirement.'
-      },
-      {
-        id: `app-sample-6`,
-        company: 'MedCare Analytics',
-        title: 'Healthcare Operations Analyst',
-        roleTitle: 'Healthcare Operations Analyst',
-        roleType: 'Operations Analyst',
-        companySize: 'Mid-size (51-250)',
-        remote: 'Hybrid',
-        source: 'LinkedIn',
-        date: '2026-10-28',
-        status: 'Interview',
-        notes: 'Loved transferable root-cause analysis and student diagnostic work.'
-      }
-    ];
-
-    const updatedState = { ...state, applications: samples };
-    saveStoredState(updatedState);
-    setState(updatedState);
-  };
-
   const handleClearApplications = () => {
     const updatedState = { ...state, applications: [] };
     saveStoredState(updatedState);
@@ -336,24 +248,19 @@ export default function ApplicationsPage() {
             <span>{isAdding ? 'Close Application Form' : 'Log New Application'}</span>
           </button>
 
-          <div className="flex items-center gap-2">
+          {applications.length > 0 && (
             <button
-              onClick={handleLoadSampleApplications}
-              className="text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl transition-colors cursor-pointer w-full text-center"
+              onClick={() => {
+                if (window.confirm('Delete all logged applications? This cannot be undone.')) {
+                  handleClearApplications();
+                }
+              }}
+              className="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 px-3 py-2 rounded-xl transition-colors cursor-pointer shrink-0"
+              title="Clear all logged applications"
             >
-              Load Demo Applications (6)
+              Clear Applications
             </button>
-
-            {applications.length > 0 && (
-              <button
-                onClick={handleClearApplications}
-                className="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 px-3 py-2 rounded-xl transition-colors cursor-pointer shrink-0"
-                title="Clear all applications to test <5 data threshold"
-              >
-                Clear
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
@@ -394,7 +301,7 @@ export default function ApplicationsPage() {
               <span>We need more data to spot reliable patterns ({totalApplications}/5 logged).</span>
             </div>
             <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-              Log at least <strong>5 applications</strong> to reveal statistical response correlations by role type, company size, and remote model. Click &ldquo;Load Demo Applications (6)&rdquo; above to preview live pipeline synthesis.
+              Log at least <strong>5 applications</strong> to reveal statistical response correlations by role type, company size, and remote model.
             </p>
           </div>
         ) : (
@@ -426,7 +333,7 @@ export default function ApplicationsPage() {
 
         {/* 3. Feed the advice back as a suggestion for the NEXT TEN applications */}
         {activeAdviceData && !activeAdviceData.needsMoreData && (
-          <div className="p-5 rounded-2xl bg-gradient-to-r from-indigo-50/70 via-purple-50/40 to-indigo-50/70 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 space-y-3">
+          <div className="p-5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 space-y-3">
             <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-300 font-bold text-xs uppercase tracking-wider">
               <Sparkles className="w-4 h-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
               <span>Suggestion for Your Next 10 Applications</span>
@@ -671,13 +578,16 @@ export default function ApplicationsPage() {
         </div>
 
         {totalApplications === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-xs space-y-3">
-            <p>No job applications logged yet.</p>
+          <div className="p-12 text-center text-slate-500 text-xs space-y-3">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No job applications logged yet.</p>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">Track your job applications here to spot response rate patterns across role types, company size, and remote models.</p>
             <button
-              onClick={handleLoadSampleApplications}
-              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+              type="button"
+              onClick={() => setIsAdding(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs cursor-pointer transition-colors"
             >
-              Load Demo Applications (6) to see pipeline analytics
+              <Plus className="w-4 h-4" />
+              <span>Log Your First Application</span>
             </button>
           </div>
         ) : (

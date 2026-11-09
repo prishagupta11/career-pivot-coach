@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { useAppState, saveStoredState } from '@/lib/storage';
 import { AppState, LearningPlan } from '@/types';
 import AILoadingIndicator from '@/components/AILoadingIndicator';
+import EmptyState from '@/components/EmptyState';
 
 export default function LearningPlanPage() {
   const [state, setState] = useAppState();
@@ -245,11 +246,11 @@ export default function LearningPlanPage() {
           <button
             type="button"
             onClick={handleGeneratePlan}
-            disabled={isGenerating}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all cursor-pointer shadow-md shadow-indigo-100 dark:shadow-indigo-950"
+            disabled={isGenerating || !profile.targetRole}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none transition-all cursor-pointer shadow-md shadow-indigo-100 dark:shadow-indigo-950"
           >
             {isGenerating ? <RefreshCw size={14} className="animate-spin shrink-0" /> : <Sparkles size={14} className="shrink-0" />}
-            <span>{isGenerating ? 'Recalculating Plan...' : 'Recalculate Plan From Gaps'}</span>
+            <span>{isGenerating ? 'Generating Plan...' : learningPlan.weeks.length > 0 ? 'Recalculate Plan From Gaps' : 'Generate Learning Plan'}</span>
           </button>
         </div>
 
@@ -348,62 +349,79 @@ export default function LearningPlanPage() {
         </div>
       </div>
 
-      {/* SECTION 2: Progress & High-Level Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Progress % */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Syllabus Completion
-            </span>
-            <div className="text-3xl font-black text-slate-900 dark:text-white mt-1">
-              {progressPercent}%
+      {learningPlan.weeks.length === 0 ? (
+        <EmptyState
+          icon={CalendarDays}
+          title="No Learning Plan Generated Yet"
+          description={
+            !profile.targetRole
+              ? "Set your target role in Profile, then map your skill gaps to generate a focused week-by-week learning plan."
+              : "Adjust your schedule above, then click \"Generate Learning Plan\" to create your personalized curriculum."
+          }
+          action={
+            !profile.targetRole
+              ? { label: "Go to Profile", href: "/profile" }
+              : { label: isGenerating ? "Generating..." : "Generate Learning Plan", onClick: handleGeneratePlan, disabled: isGenerating }
+          }
+        />
+      ) : (
+        <>
+          {/* SECTION 2: Progress & High-Level Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Progress % */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Syllabus Completion
+                </span>
+                <div className="text-3xl font-black text-slate-900 dark:text-white mt-1">
+                  {progressPercent}%
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {totalCompletedCount} of {totalTasksCount} tasks checked off
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                <Trophy size={24} className="shrink-0" />
+              </div>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {totalCompletedCount} of {totalTasksCount} tasks checked off
-            </p>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-            <Trophy size={24} className="shrink-0" />
-          </div>
-        </div>
 
-        {/* Commitment Hours */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Pacing Commitment
-            </span>
-            <div className="text-3xl font-black text-slate-900 dark:text-white mt-1">
-              {hoursPerWeek}h / wk
+            {/* Commitment Hours */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Pacing Commitment
+                </span>
+                <div className="text-3xl font-black text-slate-900 dark:text-white mt-1">
+                  {hoursPerWeek}h / wk
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  ~{totalCurriculumHours} total hours across {durationWeeks} weeks
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+                <Clock size={24} className="shrink-0" />
+              </div>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              ~{totalCurriculumHours} total hours across {durationWeeks} weeks
-            </p>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-            <Clock size={24} className="shrink-0" />
-          </div>
-        </div>
 
-        {/* Priority Focus */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-              Primary Focus (Biggest Gap)
-            </span>
-            <div className="text-base font-bold text-slate-900 dark:text-white mt-1 line-clamp-1">
-              {skillGapMap.skills.find(s => s.matchStatus === 'lacks')?.skillName || 'SQL & Relational Queries'}
+            {/* Priority Focus */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                  Primary Focus (Biggest Gap)
+                </span>
+                <div className="text-base font-bold text-slate-900 dark:text-white mt-1 line-clamp-1">
+                  {skillGapMap.skills.find(s => s.matchStatus === 'lacks')?.skillName || 'None identified yet'}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {skillGapMap.skills.find(s => s.matchStatus === 'lacks') ? 'Tackled in early milestones' : 'Map your skill gaps to prioritize'}
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+                <Layers size={24} className="shrink-0" />
+              </div>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Tackled in Weeks 1 & 2
-            </p>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
-            <Layers size={24} className="shrink-0" />
-          </div>
-        </div>
-      </div>
 
       {/* SECTION 3: The Week-by-Week Plan (Biggest Gaps First) */}
       <div className="space-y-6">
@@ -599,16 +617,16 @@ export default function LearningPlanPage() {
       </div>
 
       {/* SECTION 4: Bridge to Portfolio Projects Page */}
-      <div className="bg-gradient-to-r from-indigo-900 to-purple-900 text-white rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-md">
+      <div className="bg-slate-900 dark:bg-slate-900 border border-slate-800 text-white rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xs">
         <div className="space-y-1.5 max-w-2xl">
           <span className="text-[10px] font-bold uppercase tracking-wider bg-white/10 px-2.5 py-0.5 rounded-md">
             Next Milestone: Verifiable Proof
           </span>
           <h3 className="text-xl font-bold tracking-tight">
-            Prove These Skills With 3 Strategic Portfolio Projects
+            Prove Your Skills With Strategic Portfolio Projects
           </h3>
-          <p className="text-xs text-indigo-200 leading-relaxed">
-            Certificates get ignored; hiring managers look for verifiable evidence. Explore the 3 tailored capstone projects designed to close these exact gaps with step-by-step build plans and resume bullets.
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Certificates get ignored; hiring managers look for verifiable evidence. Explore tailored capstone projects designed to close these exact gaps with step-by-step build plans and resume bullets.
           </p>
         </div>
 
@@ -616,10 +634,12 @@ export default function LearningPlanPage() {
           href="/projects"
           className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold text-slate-900 bg-white hover:bg-slate-100 transition-all cursor-pointer shadow-md shrink-0"
         >
-          <span>View 3 Portfolio Projects</span>
+          <span>View Portfolio Projects</span>
           <ArrowRight size={14} className="shrink-0" />
         </Link>
       </div>
+        </>
+      )}
     </div>
   );
 }

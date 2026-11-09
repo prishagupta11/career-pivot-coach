@@ -62,9 +62,18 @@ export default function DashboardPage() {
                 {profile.currentRole || 'Previous Role'}
               </span>
               <ArrowRight size={16} className="w-4 h-4 shrink-0 text-slate-400 dark:text-slate-500" />
-              <span className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200/80 dark:border-indigo-800">
-                {profile.targetRole || 'Target Role'}
-              </span>
+              {profile.targetRole ? (
+                <span className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200/80 dark:border-indigo-800">
+                  {profile.targetRole}
+                </span>
+              ) : (
+                <Link
+                  href="/profile"
+                  className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold border border-dashed border-indigo-300 dark:border-indigo-700 hover:border-indigo-500 transition-colors"
+                >
+                  + Set Target Role
+                </Link>
+              )}
             </div>
           </div>
 
@@ -200,10 +209,12 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="text-2xl font-bold text-slate-900 dark:text-white mt-3">
-              {recentInterviewScore}/{maxInterviewScore}
+              {interviews.length > 0 ? `${recentInterviewScore}/${maxInterviewScore}` : '—'}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Mock score across {applications.length} logged apps
+              {interviews.length > 0
+                ? `Mock score across ${applications.length} logged apps`
+                : `${applications.length} logged applications`}
             </p>
           </div>
           <Link 
@@ -219,7 +230,7 @@ export default function DashboardPage() {
       {/* 3. RECOMMENDED NEXT PRIORITY BANNER */}
       <section 
         aria-label="Next Transition Priority"
-        className="border-l-4 border-l-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs transition-colors"
+        className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs transition-colors"
       >
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1.5 flex-1">
@@ -272,26 +283,35 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-3">
-            {profile.transferableSkills.slice(0, 4).map((skill) => (
-              <div 
-                key={skill.id} 
-                className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
-              >
-                <div>
-                  <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <CheckCircle2 size={14} className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                    <span>{skill.translatedSkill}</span>
+            {profile.transferableSkills.length > 0 ? (
+              profile.transferableSkills.slice(0, 4).map((skill) => (
+                <div 
+                  key={skill.id} 
+                  className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                >
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <CheckCircle2 size={14} className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                      <span>{skill.translatedSkill}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      From: {skill.originalSkill}
+                    </div>
                   </div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    From: {skill.originalSkill}
-                  </div>
-                </div>
 
-                <span className="self-start sm:self-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 shrink-0">
-                  {skill.strengthLevel}
-                </span>
+                  <span className="self-start sm:self-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 shrink-0">
+                    {skill.strengthLevel}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-6 px-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
+                <p>No translated skills yet.</p>
+                <Link href="/profile" className="mt-2 inline-block font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                  Add background skills in Profile &rarr;
+                </Link>
               </div>
-            ))}
+            )}
           </div>
         </article>
 
@@ -310,26 +330,35 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-3">
-            {criticalGaps.slice(0, 4).map((gap) => (
-              <div 
-                key={gap.id} 
-                className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3"
-              >
-                <div>
-                  <div className="text-xs font-bold text-slate-900 dark:text-white">{gap.skillName}</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{gap.recommendation}</div>
-                </div>
+            {criticalGaps.length > 0 ? (
+              criticalGaps.slice(0, 4).map((gap) => (
+                <div 
+                  key={gap.id} 
+                  className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3"
+                >
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">{gap.skillName}</div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{gap.recommendation}</div>
+                  </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="px-2 py-0.5 rounded text-xs bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 font-semibold shrink-0">
-                    Gap
-                  </span>
-                  <span className="text-xs text-rose-600 dark:text-rose-400 shrink-0">
-                    In {gap.frequencyPercent}% of postings
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="px-2 py-0.5 rounded text-xs bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 font-semibold shrink-0">
+                      Gap
+                    </span>
+                    <span className="text-xs text-rose-600 dark:text-rose-400 shrink-0">
+                      In {gap.frequencyPercent}% of postings
+                    </span>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-6 px-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
+                <p>No skill gaps identified yet.</p>
+                <Link href="/skill-gaps" className="mt-2 inline-block font-semibold text-rose-600 dark:text-rose-400 hover:underline">
+                  Analyze target postings &rarr;
+                </Link>
               </div>
-            ))}
+            )}
           </div>
         </article>
       </section>
@@ -348,7 +377,7 @@ export default function DashboardPage() {
             {learningPlan.portfolioProject?.title || 'Target Capstone Portfolio Project'}
           </h2>
           <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
-            {learningPlan.portfolioProject?.tagline || 'An enterprise-grade portfolio project tailored to your target role.'}
+            {learningPlan.portfolioProject?.tagline || 'Generate a learning plan to reveal your recommended capstone project.'}
           </p>
           
           {/* Technology / Competency individual tag pills */}
@@ -366,10 +395,10 @@ export default function DashboardPage() {
         </div>
 
         <Link
-          href="/projects"
+          href={learningPlan.weeks.length > 0 ? "/projects" : "/learning-plan"}
           className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-white text-slate-900 hover:bg-slate-100 transition-colors shrink-0 shadow-xs flex items-center justify-center gap-1.5 self-start md:self-center whitespace-nowrap"
         >
-          <span>View Project Milestones</span>
+          <span>{learningPlan.weeks.length > 0 ? "View Project Milestones" : "Generate Learning Plan"}</span>
           <ArrowRight size={14} className="w-3.5 h-3.5 shrink-0" />
         </Link>
       </section>

@@ -37,13 +37,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Interview answer transcript is required.' }, { status: 400 });
     }
 
-    const systemInstruction = `You are a rigorous, fair hiring manager and expert interview coach evaluating a candidate who is pivoting from "${currentRole || 'Previous Background'}" to "${targetRole || 'Junior Data Analyst'}".
+    const systemInstruction = `You are a rigorous, fair hiring manager and expert interview coach evaluating a candidate who is pivoting from "${currentRole || 'Previous Background'}" to "${targetRole || 'Target Role'}".
 
 You MUST evaluate their spoken response against this strict, FIXED 5-PART RUBRIC:
 1. relevance (1-5): Does the response directly address the specific question asked and align with the target role? Provide a one-sentence reason.
 2. structure (1-5): Does the response follow a clear, logical framework (e.g. STAR: Situation, Task, Action, Result) with crisp progression? Provide a one-sentence reason.
 3. specificExamples (1-5): Does the response cite concrete data, metrics, numbers, percentages, or tangible evidence rather than vague generalities? Provide a one-sentence reason.
-4. technicalAccuracy (1-5): Does the response accurately use the technical terminology, methods, and tools expected in the target role (${targetRole})? Provide a one-sentence reason.
+4. technicalAccuracy (1-5): Does the response accurately use the technical terminology, methods, and tools expected in the target role (${targetRole || 'the target role'})? Provide a one-sentence reason.
 5. clarity (1-5): Is the articulation concise, punchy, and clear, free of rambling or filler? Provide a one-sentence reason.
 
 Requirements:
@@ -53,9 +53,9 @@ Requirements:
 - Provide "strongerSampleAnswer": A first-person, highly polished model answer showing how to ace this exact question by leveraging their background.`;
 
     const prompt = `Candidate & Interview Details:
-- Current Career: ${currentRole || 'High School Math & Science Teacher'}
-- Target Role: ${targetRole || 'Junior Data Analyst'}
-- Target Skill/Competency Tested: ${targetSkill || 'Data Analytics & Technical Problem Solving'}
+- Current Career: ${currentRole || 'Previous Background'}
+- Target Role: ${targetRole || 'Target Role'}
+- Target Skill/Competency Tested: ${targetSkill || 'Core Technical Problem Solving'}
 - Question Type: ${questionType || 'technical / behavioral'}
 - Attempt Number: ${attemptNumber || 1}${previousScore ? ` (Previous Score: ${previousScore}/25)` : ''}
 - Question Asked: "${question}"
@@ -114,10 +114,10 @@ Evaluate strictly against the 5-part rubric and return JSON matching the specifi
       const singleBiggestImprovement = exScore < 4
         ? `Anchor your story with 2 specific numbers (e.g. baseline failure rate vs post-intervention improvement percentage) to prove measurable ROI.`
         : techScore < 4
-        ? `Swap conversational terms for precise ${targetRole || 'data'} vocabulary, such as 'exploratory analysis', 'root-cause diagnosis', and 'metric tracking'.`
+        ? `Swap conversational terms for precise ${targetRole || 'industry'} vocabulary, and name the specific methods and tools you used.`
         : `Emphasize the business stakeholder impact in your closing sentence to tie the technical result directly to executive decision-making.`;
 
-      const strongerSampleAnswer = `When evaluating this in my transition to ${targetRole || 'Junior Data Analyst'}, I approach it systematically. In my previous work with 150+ student datasets, I identified that 80% of recurring bottlenecks stemmed from a single prerequisite concept. Rather than relying on intuition, I engineered a diagnostic tracking model with pivot tables and statistical summaries to isolate error patterns. By implementing a daily 15-minute targeted remediation protocol, we drove an 18% increase in pass rates. This proved to me that data-backed root-cause analysis is the most reliable way to optimize operational outcomes.`;
+      const strongerSampleAnswer = `When evaluating this in my transition to ${targetRole || 'this target role'}, I approach it systematically. In my previous experience${currentRole ? ` in ${currentRole}` : ''}, I focused on diagnosing root causes rather than relying on intuition. I structured a data-informed remediation workflow with clear metrics to isolate error patterns and track progress, driving measurable improvements in outcomes. This background confirmed that structured analysis and cross-functional communication are essential for high-impact decision making in ${targetRole || 'this position'}.`;
 
       return {
         rubric: {

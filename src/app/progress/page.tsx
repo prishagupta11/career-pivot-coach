@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { useAppState, saveStoredState } from '@/lib/storage';
 import { AppState, LearningPlan, PlanChangeItem, PlanAdjustmentRecord } from '@/types';
 import AILoadingIndicator from '@/components/AILoadingIndicator';
+import EmptyState from '@/components/EmptyState';
 
 export default function ProgressPage() {
   const [state, setState] = useAppState();
@@ -35,8 +36,8 @@ export default function ProgressPage() {
   const { learningPlan, interviews, skillGapMap, profile, previousPlan } = state || {
     learningPlan: { durationWeeks: 4, hoursPerWeek: 10, weeks: [], portfolioProject: { title: '', tagline: '', problemStatement: '', demonstratedSkills: [], deliverables: [], milestones: [] }, lastGenerated: '' },
     interviews: [],
-    skillGapMap: { overallMatchPercentage: 58, skills: [], criticalGapsCount: 2, lastAnalyzed: '' },
-    profile: { targetRole: 'Junior Data Analyst', currentRole: 'High School Teacher' }
+    skillGapMap: { overallMatchPercentage: 0, skills: [], criticalGapsCount: 0, lastAnalyzed: '' },
+    profile: { targetRole: '', currentRole: '' }
   };
 
   // 1. Tasks Finished metrics
@@ -52,7 +53,8 @@ export default function ProgressPage() {
 
   // 2. Hours Studied vs Planned
   const plannedHours = useMemo(() => {
-    return learningPlan?.weeks?.reduce((acc, w) => acc + (w.hoursNeeded || learningPlan.hoursPerWeek || 10), 0) || (learningPlan.durationWeeks * learningPlan.hoursPerWeek);
+    if (!learningPlan?.weeks || learningPlan.weeks.length === 0) return 0;
+    return learningPlan.weeks.reduce((acc, w) => acc + (w.hoursNeeded || learningPlan.hoursPerWeek || 10), 0);
   }, [learningPlan]);
 
   const completedTaskHours = useMemo(() => {
@@ -70,29 +72,29 @@ export default function ProgressPage() {
 
   const totalHoursStudied = completedTaskHours + loggedExtraHours;
   const hoursProgressPercent = plannedHours > 0 ? Math.min(Math.round((totalHoursStudied / plannedHours) * 100), 100) : 0;
-  const isPacingBehind = totalHoursStudied < (plannedHours * 0.45) && completedTasks < (totalTasks * 0.5);
+  const isPacingBehind = plannedHours > 0 && totalHoursStudied < (plannedHours * 0.45) && completedTasks < (totalTasks * 0.5);
 
   // 3. Interview Score Trends
   const recentInterview = interviews?.[0] || null;
-  const recentScore = recentInterview?.rubric?.totalScore || recentInterview?.scores?.totalScore || 20;
+  const recentScore = (recentInterview?.rubric?.totalScore || recentInterview?.scores?.totalScore) ?? null;
   const maxInterviewScore = recentInterview?.rubric?.maxScore || 25;
   
   const avgInterviewScore = useMemo(() => {
-    if (!interviews || interviews.length === 0) return 20;
-    const scores = interviews.map(i => i.rubric?.totalScore || i.scores?.totalScore || 18);
+    if (!interviews || interviews.length === 0) return null;
+    const scores = interviews.map(i => i.rubric?.totalScore || i.scores?.totalScore || 0);
     const sum = scores.reduce((a, b) => a + b, 0);
     return Math.round(sum / scores.length);
   }, [interviews]);
 
   const weakestSkills = useMemo(() => {
-    if (!skillGapMap?.skills) return ['SQL & Window Functions', 'Tableau Dashboards'];
+    if (!skillGapMap?.skills) return [];
     return skillGapMap.skills
       .filter(s => s.matchStatus === 'lacks' || s.matchStatus === 'partly' || s.gapSeverity === 'Critical')
       .map(s => s.skillName);
   }, [skillGapMap]);
 
   const strongSkills = useMemo(() => {
-    if (!skillGapMap?.skills) return ['Exploratory Data Analysis', 'Stakeholder Presentations'];
+    if (!skillGapMap?.skills) return [];
     return skillGapMap.skills
       .filter(s => s.candidateHas || s.matchStatus === 'has')
       .map(s => s.skillName);
@@ -149,7 +151,7 @@ export default function ProgressPage() {
           },
           weakestSkills,
           strongSkills,
-          targetRole: profile.targetRole || 'Junior Data Analyst'
+          targetRole: profile.targetRole || 'Target Role'
         })
       });
 
@@ -233,8 +235,8 @@ export default function ProgressPage() {
         <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 shrink-0">
           <button
             onClick={handleAdjustMyPlan}
-            disabled={isAdjusting}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all cursor-pointer shadow-sm hover:shadow-md"
+            disabled={isAdjusting || !learningPlan?.weeks?.length || !profile?.targetRole}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none transition-all cursor-pointer shadow-sm hover:shadow-md"
           >
             {isAdjusting ? <RefreshCw className="w-4 h-4 shrink-0 animate-spin" /> : <Sliders className="w-4 h-4 shrink-0" />}
             <span>{isAdjusting ? 'Calibrating Plan...' : 'Adjust My Plan with AI'}</span>
@@ -279,33 +281,50 @@ export default function ProgressPage() {
         />
       )}
 
-      {/* View Switcher Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
-        <button
-          onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'overview'
-              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          Progress Overview & Velocity
-        </button>
+      {learningPlan.weeks.length === 0 ? (
+        <EmptyState
+          icon={TrendingUp}
+          title="No Learning Plan to Track Yet"
+          description={
+            !profile?.targetRole
+              ? "Set your target role in Profile, then generate your learning plan to track execution velocity and pacing."
+              : "Generate your learning plan to start tracking weekly milestones, study hours, and interview progress."
+          }
+          action={
+            !profile?.targetRole
+              ? { label: "Go to Profile", href: "/profile" }
+              : { label: "Go to Learning Plan", href: "/learning-plan" }
+          }
+        />
+      ) : (
+        <>
+          {/* View Switcher Tabs */}
+          <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'overview'
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              Progress Overview & Velocity
+            </button>
 
-        {(adjustmentResult || previousPlan) && (
-          <button
-            onClick={() => setActiveTab('before_after')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'before_after'
-                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Before vs After Calibration ({adjustmentResult?.changes?.length || 3} Changes)</span>
-          </button>
-        )}
-      </div>
+            {(adjustmentResult || previousPlan) && (
+              <button
+                onClick={() => setActiveTab('before_after')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'before_after'
+                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                <span>Before vs After Calibration ({adjustmentResult?.changes?.length || 3} Changes)</span>
+              </button>
+            )}
+          </div>
 
       {activeTab === 'overview' ? (
         <>
@@ -408,10 +427,10 @@ export default function ProgressPage() {
               <div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-black text-slate-900 dark:text-white">
-                    {recentScore}
+                    {recentScore !== null ? recentScore : '—'}
                   </span>
                   <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                    / {maxInterviewScore} points (avg {avgInterviewScore})
+                    / {maxInterviewScore} points{avgInterviewScore !== null ? ` (avg ${avgInterviewScore})` : ''}
                   </span>
                 </div>
 
@@ -676,6 +695,8 @@ export default function ProgressPage() {
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

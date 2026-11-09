@@ -163,7 +163,7 @@ Respond ONLY with this JSON schema:
 
     const safeCurrentRole = (typeof result.data.currentRole === 'string' && result.data.currentRole.trim())
       ? result.data.currentRole.trim()
-      : (typeof inputCurrentRole === 'string' && inputCurrentRole.trim() ? inputCurrentRole.trim() : 'Career Transitioner');
+      : (typeof inputCurrentRole === 'string' && inputCurrentRole.trim() ? inputCurrentRole.trim() : '');
 
     const safeTargetRole = (typeof result.data.targetRole === 'string' && result.data.targetRole.trim())
       ? result.data.targetRole.trim()

@@ -17,6 +17,7 @@ import {
 import Link from 'next/link';
 import { useAppState, saveStoredState } from '@/lib/storage';
 import { AppState, PortfolioProjectCard } from '@/types';
+import EmptyState from '@/components/EmptyState';
 
 export default function ProjectsPage() {
   const [state, setState] = useAppState();
@@ -69,6 +70,41 @@ export default function ProjectsPage() {
     return (p.status || 'Not Started') === filterStatus;
   });
 
+  if (projects.length === 0) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-8 pb-16">
+        {/* Header Banner */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-400 text-xs font-semibold mb-2">
+            <FolderGit2 size={14} className="shrink-0" />
+            <span>Verifiable Proof of Competence</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            Portfolio Projects Roadmap
+          </h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+            Certificates get filtered by ATS; verifiable projects land interviews. Capstone projects prove your critical missing skills, connect directly to your weekly learning plan, and provide ready-to-use resume bullets.
+          </p>
+        </div>
+
+        <EmptyState
+          icon={FolderGit2}
+          title="No Portfolio Projects Yet"
+          description={
+            !profile.targetRole
+              ? "Set your target role in Profile, then generate your learning plan to unlock targeted portfolio projects."
+              : "Generate your learning plan to reveal targeted portfolio projects tailored to your target role and skill gaps."
+          }
+          action={
+            !profile.targetRole
+              ? { label: "Go to Profile", href: "/profile" }
+              : { label: "Go to Learning Plan", href: "/learning-plan" }
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-16">
       {/* Header Banner */}
@@ -82,15 +118,15 @@ export default function ProjectsPage() {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               Portfolio Projects Roadmap
             </h1>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
-              Certificates get filtered by ATS; verifiable projects land interviews. These 3 capstone projects prove your critical missing skills, connect directly to your weekly learning plan, and provide ready-to-use resume bullets.
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+              Certificates get filtered by ATS; verifiable projects land interviews. Capstone projects prove your critical missing skills, connect directly to your weekly learning plan, and provide ready-to-use resume bullets.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <Link
               href="/learning-plan"
-              className="text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer shadow-xs"
+              className="text-xs font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 px-4 py-2.5 rounded-xl transition-all cursor-pointer shadow-2xs"
             >
               View Learning Plan
             </Link>
@@ -118,10 +154,10 @@ export default function ProjectsPage() {
         <div>
           <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Sparkles size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
-            <span>3 Targeted Portfolio Projects Closing Critical Gaps</span>
+            <span>Targeted Portfolio Projects Closing Critical Gaps</span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Targeting: <strong className="text-indigo-600 dark:text-indigo-400">{profile.targetRole || 'Junior Data Analyst'}</strong>
+            Targeting: <strong className="text-indigo-600 dark:text-indigo-400">{profile.targetRole}</strong>
           </p>
         </div>
 
@@ -294,7 +330,7 @@ export default function ProjectsPage() {
 
                   <Link
                     href="/mock-interview"
-                    className="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-2xs transition-colors cursor-pointer"
                   >
                     <span>Practice Pitch in Interview</span>
                     <ArrowRight size={13} className="shrink-0" />
@@ -315,7 +351,7 @@ export default function ProjectsPage() {
             </p>
             <Link
               href="/learning-plan"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs cursor-pointer"
             >
               <span>Go to Learning Plan</span>
               <ArrowRight size={13} className="shrink-0" />

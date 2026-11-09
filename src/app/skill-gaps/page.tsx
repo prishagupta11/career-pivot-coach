@@ -26,45 +26,7 @@ import Link from 'next/link';
 import { useAppState, saveStoredState } from '@/lib/storage';
 import { AppState, JobPosting, SkillGapItem, SkillGapMap } from '@/types';
 import AILoadingIndicator from '@/components/AILoadingIndicator';
-
-const SAMPLE_DEMO_POSTINGS: JobPosting[] = [
-  {
-    id: "jd-demo-1",
-    title: "Junior Data Analyst",
-    company: "HealthMetrics Solutions",
-    location: "Remote / Hybrid",
-    rawText: "We are seeking a Junior Data Analyst to assist our healthcare analytics team. Requirements: 1-2 years experience with data analysis. Strong proficiency in SQL (joins, subqueries, group by). Hands-on experience building reports in Tableau or Power BI. Advanced Microsoft Excel (vlookup, pivot tables). Strong verbal and written communication skills to present findings to clinical directors.",
-    extractedSkills: ["SQL", "Tableau", "Microsoft Excel", "Stakeholder Communication", "Data Reporting"],
-    dateAdded: new Date().toISOString().split('T')[0]
-  },
-  {
-    id: "jd-demo-2",
-    title: "Data Analyst I",
-    company: "RetailScale Commerce",
-    location: "Chicago, IL",
-    rawText: "RetailScale is hiring an entry-level Data Analyst. Responsibilities include querying PostgreSQL databases, creating automated dashboards in Power BI, maintaining sales performance KPIs, and collaborating with inventory managers. Must know SQL, Excel, and Power BI. Python or R is a plus for automated data cleaning.",
-    extractedSkills: ["SQL", "Power BI", "Microsoft Excel", "KPI Tracking", "Python"],
-    dateAdded: new Date().toISOString().split('T')[0]
-  },
-  {
-    id: "jd-demo-3",
-    title: "Operations Data Analyst",
-    company: "FinEdge Logistics",
-    location: "New York, NY",
-    rawText: "FinEdge is seeking an Operations Analyst. Candidate will validate transaction datasets, write SQL queries to extract cohort metrics, build Excel financial models, and present weekly KPI digests to executive leadership. Requirements: SQL, Excel, Data Validation, Presentation Skills.",
-    extractedSkills: ["SQL", "Microsoft Excel", "Data Validation", "Stakeholder Communication", "KPI Tracking"],
-    dateAdded: new Date().toISOString().split('T')[0]
-  },
-  {
-    id: "jd-demo-4",
-    title: "Business Intelligence Analyst",
-    company: "Apex Cloud Technologies",
-    location: "San Francisco, CA / Remote",
-    rawText: "Apex Cloud is seeking a BI Analyst to turn customer telemetry into executive insights. Key responsibilities: Write production SQL queries (JOINs, GROUP BY, aggregations) to aggregate multi-tenant usage metrics. Build interactive executive dashboards in Tableau or Power BI. Present monthly retention and churn retrospectives to product leads. Required: Strong SQL, Tableau/Power BI, Excel data modeling, and data storytelling.",
-    extractedSkills: ["SQL", "Tableau", "Power BI", "Data Storytelling", "Excel Data Modeling"],
-    dateAdded: new Date().toISOString().split('T')[0]
-  }
-];
+import EmptyState from '@/components/EmptyState';
 
 export default function SkillGapsPage() {
   const [state, setState] = useAppState();
@@ -80,8 +42,6 @@ export default function SkillGapsPage() {
   const [newCompany, setNewCompany] = useState('');
   const [newLocation, setNewLocation] = useState('Remote / Hybrid');
   const [newText, setNewText] = useState('');
-
-
 
   if (!state) {
     return (
@@ -99,20 +59,6 @@ export default function SkillGapsPage() {
   // Toggle skill card expansion for context and learning suggestions
   const toggleSkillExpand = (id: string) => {
     setExpandedDetails(prev => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  // 1. Load Sample Postings for Demo
-  const handleLoadSamplePostings = () => {
-    const updatedState: AppState = {
-      ...state,
-      jobPostings: SAMPLE_DEMO_POSTINGS
-    };
-    saveStoredState(updatedState);
-    setState(updatedState);
-    setStatusMessage({
-      text: 'Loaded 4 real-world sample job postings for Junior Data Analyst! Click "Map My Gaps" to analyze them with AI.',
-      type: 'info'
-    });
   };
 
   // 2. Add New Custom Job Posting
@@ -157,7 +103,7 @@ export default function SkillGapsPage() {
   const handleMapMyGaps = async () => {
     if (state.jobPostings.length === 0) {
       setStatusMessage({
-        text: 'Please paste at least one job description or click "Load Sample Postings (Demo)" first.',
+        text: 'Please paste at least one target job posting first.',
         type: 'error'
       });
       return;
@@ -182,8 +128,8 @@ export default function SkillGapsPage() {
       if (!res.ok) throw new Error(data.friendlyMessage || data.error || 'Failed to map skill gaps');
 
       const updatedSkillGapMap: SkillGapMap = {
-        overallMatchPercentage: typeof data.overallMatchPercentage === 'number' ? data.overallMatchPercentage : 58,
-        criticalGapsCount: typeof data.criticalGapsCount === 'number' ? data.criticalGapsCount : 2,
+        overallMatchPercentage: typeof data.overallMatchPercentage === 'number' ? data.overallMatchPercentage : 0,
+        criticalGapsCount: typeof data.criticalGapsCount === 'number' ? data.criticalGapsCount : (data.skills || []).filter((s: SkillGapItem) => s.gapSeverity === 'Critical').length,
         skills: data.skills || [],
         lastAnalyzed: data.lastAnalyzed || new Date().toISOString(),
         retried: data.retried,
@@ -262,18 +208,10 @@ export default function SkillGapsPage() {
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <button
-              onClick={handleLoadSamplePostings}
-              type="button"
-              className="text-xs font-medium text-indigo-700 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-indigo-200 bg-indigo-50/80 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer whitespace-nowrap shadow-xs"
-            >
-              Load Sample Postings (Demo)
-            </button>
-
-            <button
               onClick={handleMapMyGaps}
               disabled={isAnalyzing || jobPostings.length === 0}
               type="button"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all cursor-pointer shadow-md shadow-indigo-100 dark:shadow-indigo-950"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none transition-all cursor-pointer shadow-md shadow-indigo-100 dark:shadow-indigo-950"
             >
               {isAnalyzing ? <RefreshCw size={14} className="animate-spin shrink-0" /> : <Sparkles size={14} className="shrink-0" />}
               <span>{isAnalyzing ? 'Mapping Your Gaps...' : 'Map My Gaps'}</span>
@@ -475,23 +413,27 @@ export default function SkillGapsPage() {
           ))}
 
           {jobPostings.length === 0 && (
-            <div className="col-span-full p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-800">
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">
-                No job postings added yet.
-              </p>
-              <button
-                type="button"
-                onClick={handleLoadSamplePostings}
-                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-              >
-                Click here to load 4 sample target postings for the demo
-              </button>
+            <div className="col-span-full">
+              <EmptyState
+                icon={Briefcase}
+                title="No Target Job Postings Added"
+                description={
+                  !profile.targetRole
+                    ? "Set your target role in Profile first, then add 2–4 job descriptions to analyze real employer requirements."
+                    : `Add 2–4 target job postings for ${profile.targetRole} to map market demand and reveal your skill gaps.`
+                }
+                action={
+                  !profile.targetRole
+                    ? { label: "Go to Profile", href: "/profile" }
+                    : { label: "Add Job Description", onClick: () => setIsAddingPosting(true) }
+                }
+              />
             </div>
           )}
         </div>
 
         {/* Primary Map My Gaps Trigger Banner */}
-        <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 dark:from-indigo-950/30 dark:via-purple-950/30 dark:to-indigo-950/30 border border-indigo-200 dark:border-indigo-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Sparkles size={16} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
@@ -506,7 +448,7 @@ export default function SkillGapsPage() {
             type="button"
             onClick={handleMapMyGaps}
             disabled={isAnalyzing || jobPostings.length === 0}
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all cursor-pointer shadow-md shadow-indigo-200 dark:shadow-indigo-950 shrink-0"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none transition-all cursor-pointer shadow-md shadow-indigo-200 dark:shadow-indigo-950 shrink-0"
           >
             {isAnalyzing ? <RefreshCw size={15} className="animate-spin shrink-0" /> : <Layers size={15} className="shrink-0" />}
             <span>{isAnalyzing ? 'Mapping Skill Gaps...' : 'Map My Gaps Now'}</span>
@@ -514,10 +456,27 @@ export default function SkillGapsPage() {
         </div>
       </div>
 
-      {/* SECTION 2: Metric Cards Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Match Percentage */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+      {/* SECTION 2 & 3: Metric Cards Overview & Ranked Skill Gap Matrix */}
+      {skillGapMap.skills.length === 0 ? (
+        <EmptyState
+          icon={Target}
+          title="Skill Gap Map Not Analyzed Yet"
+          description={
+            jobPostings.length === 0
+              ? "Add at least one target job posting above, then click Map My Gaps to evaluate your skills against real market demand."
+              : "Job postings added! Click \"Map My Gaps Now\" above to analyze your skill match and highlight critical gaps."
+          }
+          action={
+            jobPostings.length > 0
+              ? { label: isAnalyzing ? "Mapping Gaps..." : "Map My Gaps Now", onClick: handleMapMyGaps, disabled: isAnalyzing }
+              : undefined
+          }
+        />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Match Percentage */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Overall Market Match
@@ -832,6 +791,8 @@ export default function SkillGapsPage() {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

@@ -54,7 +54,7 @@ export async function POST(req: Request) {
       profile: UserProfile;
     };
 
-    const targetRole = profile?.targetRole || 'Junior Data Analyst';
+    const targetRole = profile?.targetRole || 'Target Role';
     const missingGaps = skillGaps.filter(g => g.matchStatus === 'lacks' || g.matchStatus === 'partly');
     const prioritizedGapNames = (missingGaps.length > 0 ? missingGaps : skillGaps)
       .map(g => `${g.skillName} (${g.frequencyPercent}% demand in postings - Status: ${g.matchStatus})`)

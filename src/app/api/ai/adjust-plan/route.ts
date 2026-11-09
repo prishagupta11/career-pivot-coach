@@ -28,12 +28,12 @@ export async function POST(req: Request) {
     }
 
     const isBehind = (hoursStudied < plannedHours * 0.75) || (tasksFinishedCount < totalTasksCount * 0.4);
-    const hasHighInterviewScore = (interviewScores?.recentScore >= 21) || (interviewScores?.averageScore >= 20);
+    const hasHighInterviewScore = (typeof interviewScores?.recentScore === 'number' && interviewScores.recentScore >= 21) || (typeof interviewScores?.averageScore === 'number' && interviewScores.averageScore >= 20);
 
     const systemInstruction = `You are an elite Career Pivot Coach and Dynamic Learning Curriculum Architect.
 You must adapt and calibrate an adult career transitioner's study plan based on their real execution data:
 1. Execution Pace & Hours: Hours Studied (${hoursStudied} hrs) vs Planned (${plannedHours} hrs). Completed tasks: ${tasksFinishedCount}/${totalTasksCount}.
-2. Interview Performance: Recent interview score ${interviewScores?.recentScore || 20}/25. Weakest criteria: ${interviewScores?.weakestCriterion || 'Technical Accuracy'}.
+2. Interview Performance: Recent interview score ${typeof interviewScores?.recentScore === 'number' ? `${interviewScores.recentScore}/25` : 'N/A'}. Weakest criteria: ${interviewScores?.weakestCriterion || 'Technical Accuracy'}.
 3. Skill Strengths: ${Array.isArray(strongSkills) ? strongSkills.join(', ') : 'Exploratory Analysis, Presentation'}.
 4. Skill Gaps: ${Array.isArray(weakestSkills) ? weakestSkills.join(', ') : 'SQL Joins, BI Dashboards'}.
 
@@ -45,12 +45,12 @@ MANDATORY ADAPTATION RULES:
 - Output the full "revisedPlan" object conforming to the LearningPlan schema.`;
 
     const prompt = `Current Plan Overview:
-- Target Role: ${targetRole || 'Junior Data Analyst'}
+- Target Role: ${targetRole || 'Target Role'}
 - Duration: ${learningPlan.durationWeeks} weeks, ${learningPlan.hoursPerWeek} hrs/week
 - Status: ${isBehind ? 'BEHIND schedule on study hours/tasks' : 'ON TRACK with hours'}
 - Hours Completed: ${hoursStudied} / ${plannedHours} planned hours
 - Tasks Completed: ${tasksFinishedCount} / ${totalTasksCount} milestones
-- Interview Readiness: Recent Score ${interviewScores?.recentScore || 20}/25 (Average: ${interviewScores?.averageScore || 19}/25)
+- Interview Readiness: Recent Score ${typeof interviewScores?.recentScore === 'number' ? `${interviewScores.recentScore}/25` : 'N/A'} (Average: ${typeof interviewScores?.averageScore === 'number' ? `${interviewScores.averageScore}/25` : 'N/A'})
 - Active Plan Weeks:
 ${JSON.stringify(learningPlan.weeks, null, 2)}
 
@@ -95,7 +95,7 @@ Produce a revised, optimized learning plan reflecting these adaptations, accompa
             weekNumber: weekNum,
             type: 'accelerated',
             description: `Accelerated review for ${week.theme}; trimmed basic definitions to jump straight into production deliverables.`,
-            reason: `High interview validation (${interviewScores?.recentScore || 22}/25) indicates strong grasp of baseline concepts.`
+            reason: `High interview validation${typeof interviewScores?.recentScore === 'number' ? ` (${interviewScores.recentScore}/25)` : ''} indicates strong grasp of baseline concepts.`
           });
           return {
             ...week,
@@ -196,7 +196,10 @@ Produce a revised, optimized learning plan reflecting these adaptations, accompa
         ? `Recalibrated timeline from ${learningPlan.durationWeeks} to ${newDurationWeeks} weeks to accommodate actual study pace (${hoursStudied} hrs logged), trimming secondary reading and adding targeted SQL practice.`
         : `Optimized plan based on strong mock interview validation: accelerated introductory modules and added advanced diagnostic drills for your weakest market skill gap.`;
 
-      const rationale = `Based on your ${hoursStudied} hours studied (vs ${plannedHours} planned) and latest mock interview score (${interviewScores?.recentScore || 20}/25), the curriculum has been dynamically calibrated. Weak skill areas have received dedicated practical exercises, validated strengths have been accelerated, and the overall pacing has been adjusted to protect your transition velocity.`;
+      const interviewScoreClause = typeof interviewScores?.recentScore === 'number'
+        ? ` and latest mock interview score (${interviewScores.recentScore}/25)`
+        : '';
+      const rationale = `Based on your ${hoursStudied} hours studied (vs ${plannedHours} planned)${interviewScoreClause}, the curriculum has been dynamically calibrated. Weak skill areas have received dedicated practical exercises, validated strengths have been accelerated, and the overall pacing has been adjusted to protect your transition velocity.`;
 
       return {
         summary,

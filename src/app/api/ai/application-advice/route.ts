@@ -44,7 +44,7 @@ export async function POST(req: Request) {
           `Continue targeting roles closely aligned with your transferable skills to start surfacing meaningful pipeline signals.`
         ],
         nextTenApplicationsSuggestion: {
-          focusRoleTypes: [targetRole || 'Junior Data Analyst', 'Operations Analyst'],
+          focusRoleTypes: targetRole ? [targetRole] : ['Target Positions'],
           focusCompanySizes: ['Mid-size (51-250)'],
           focusRemoteTypes: ['Hybrid', 'Remote'],
           focusSources: ['LinkedIn', 'Referral'],
@@ -59,7 +59,7 @@ Your job is to examine the empirical response numbers and:
 1. Turn the counts and conversion rates into EXACTLY TWO OR THREE plain, honest advice sentences (no corporate fluff or filler).
 2. Formulate concrete, tactical suggestions for their NEXT TEN applications based strictly on which role types, company sizes, remote models, and sources actually converted.`;
 
-    const prompt = `Empirical Application Data for Candidate Pivot to ${targetRole || 'Junior Data Analyst'}:
+    const prompt = `Empirical Application Data for Candidate Pivot to ${targetRole || 'Target Role'}:
 - Total Logged Applications: ${totalApplications}
 - Total Responses (Screen/Interview/Offer): ${responseCount} (${responseRate}% overall response rate)
 
@@ -105,11 +105,11 @@ Generate:
         needsMoreData: false,
         adviceSentences: [sentence1, sentence2, sentence3],
         nextTenApplicationsSuggestion: {
-          focusRoleTypes: [topRole.name, targetRole || 'Junior Data Analyst'],
+          focusRoleTypes: targetRole && targetRole !== topRole.name ? [topRole.name, targetRole] : [topRole.name],
           focusCompanySizes: [topCompany.name],
           focusRemoteTypes: [topRemote.name, 'Remote'],
           focusSources: [topSource.name, 'LinkedIn'],
-          actionPlanText: `Allocate your next 10 applications: target 7 ${topRole.name} or Data Analyst roles at ${topCompany.name} firms (favoring ${topRemote.name} openings), and route at least 4 through warm ${topSource.name} introductions rather than cold submissions.`
+          actionPlanText: `Allocate your next 10 applications: target 7 ${topRole.name} or ${targetRole || 'target'} roles at ${topCompany.name} firms (favoring ${topRemote.name} openings), and route at least 4 through warm ${topSource.name} introductions rather than cold submissions.`
         }
       };
     };

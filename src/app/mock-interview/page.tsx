@@ -20,6 +20,7 @@ import {
 import { useAppState, saveStoredState } from '@/lib/storage';
 import { InterviewRecord, RubricCriterion } from '@/types';
 import AILoadingIndicator from '@/components/AILoadingIndicator';
+import EmptyState from '@/components/EmptyState';
 
 interface QuestionItem {
   id: string;
@@ -42,6 +43,7 @@ export default function MockInterviewPage() {
   const [isCleaning, setIsCleaning] = useState<boolean>(false);
   const [isScoring, setIsScoring] = useState<boolean>(false);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState<boolean>(false);
+  const [questionError, setQuestionError] = useState<string | null>(null);
   
   // Evaluation & Retry tracking
   const [latestEvaluation, setLatestEvaluation] = useState<InterviewRecord | null>(null);
@@ -95,7 +97,7 @@ export default function MockInterviewPage() {
       if (recognitionRef.current) {
         try {
           recognitionRef.current.abort();
-        } catch (_) {}
+        } catch {}
       }
     };
   }, []);
@@ -110,71 +112,14 @@ export default function MockInterviewPage() {
       .filter(Boolean);
   }, [gapSkills]);
 
-  // Build default question bank tailored to candidate's target role and weakest gaps
-  const defaultQuestions: QuestionItem[] = useMemo(() => {
-    const targetRole = state?.profile?.targetRole || 'Junior Data Analyst';
-    const currentRole = state?.profile?.currentRole || 'Career Transitioner';
-    const gap1 = weakestSkills[0] || 'SQL & Complex Joins';
-    const gap2 = weakestSkills[1] || 'Tableau / Power BI';
-    const gap3 = weakestSkills[2] || 'Data Cleansing & Validation';
-
-    return [
-      {
-        id: 'q-tech-sql',
-        text: `In SQL, how would you write a query using window functions or multi-table joins to analyze month-over-month retention cohorts?`,
-        type: 'technical',
-        targetSkill: gap1,
-        contextWhy: 'Tests ability to structure advanced queries, aggregate transactional data, and compute analytical metrics.'
-      },
-      {
-        id: 'q-tech-cleaning',
-        text: `Walk me through your methodology for ${gap3} when dealing with duplicate records, null entries, and inconsistent date formats.`,
-        type: 'technical',
-        targetSkill: gap3,
-        contextWhy: 'Assesses data hygiene standards and diagnostic problem-solving before feeding data into production pipelines.'
-      },
-      {
-        id: 'q-tech-bi',
-        text: `When designing an executive dashboard in ${gap2}, how do you structure high-level KPI tiles versus transactional drill-downs for operational leaders?`,
-        type: 'technical',
-        targetSkill: gap2,
-        contextWhy: 'Verifies visual information architecture, executive storytelling, and user-centric dashboard engineering.'
-      },
-      {
-        id: 'q-behav-pivot',
-        text: `Why are you transitioning from your background in ${currentRole} into ${targetRole}, and how does your previous experience make you uniquely valuable?`,
-        type: 'behavioral',
-        targetSkill: 'Pivot Rationale & Storytelling',
-        contextWhy: 'Assesses career intentionality, self-awareness, and the ability to articulate transferable strengths.'
-      },
-      {
-        id: 'q-behav-stakeholder',
-        text: `Describe a situation where you had to explain complex quantitative data or metric discrepancies to non-technical stakeholders who were skeptical of the findings.`,
-        type: 'behavioral',
-        targetSkill: 'Stakeholder Translation & Data Storytelling',
-        contextWhy: 'Crucial for analysts who must influence business decisions and simplify technical complexities for leadership.'
-      },
-      {
-        id: 'q-behav-mistake',
-        text: `Tell me about a time when your initial analytical hypothesis or project assumption was wrong. How did you diagnose the error and adjust?`,
-        type: 'behavioral',
-        targetSkill: 'Root Cause Problem Solving & Resilience',
-        contextWhy: 'Probes analytical integrity, willingness to follow empirical evidence, and how you handle ambiguity.'
-      }
-    ];
-  }, [state.profile?.targetRole, state.profile?.currentRole, weakestSkills]);
-
-  // Active question list
-  const allQuestions = useMemo(() => {
-    return customQuestionList.length > 0 ? customQuestionList : defaultQuestions;
-  }, [customQuestionList, defaultQuestions]);
+  // Active question list (user-generated only, no invented default questions)
+  const allQuestions = customQuestionList;
 
   const selectedQuestion = useMemo(() => {
     if (selectedQuestionId) {
-      const found = allQuestions.find(q => q.id === selectedQuestionId);
-      if (found) return found;
+      return allQuestions.find(q => q.id === selectedQuestionId) || null;
     }
-    return allQuestions[0] || null;
+    return null;
   }, [allQuestions, selectedQuestionId]);
 
   const setSelectedQuestion = (q: QuestionItem | null) => {
@@ -191,6 +136,22 @@ export default function MockInterviewPage() {
       <div className="p-12 text-center text-slate-500">
         <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-600" />
         <p>Loading Voice Mock Interviewer...</p>
+      </div>
+    );
+  }
+
+  if (!state.profile.targetRole) {
+    return (
+      <div className="space-y-8 max-w-5xl mx-auto pb-16">
+        <EmptyState
+          icon={AudioWaveform}
+          title="Set Your Target Role in Profile First"
+          description="Mock interview questions and rubric evaluations are calibrated against your target role and skill gaps. Set your target role in Profile to unlock interview practice."
+          action={{
+            label: "Go to Profile",
+            href: "/profile"
+          }}
+        />
       </div>
     );
   }
@@ -212,7 +173,7 @@ export default function MockInterviewPage() {
     if (isRecording) {
       try {
         rec.stop();
-      } catch (_) {}
+      } catch {}
       setIsRecording(false);
     } else {
       try {
@@ -240,7 +201,7 @@ export default function MockInterviewPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           rawSpeech: raw,
-          context: `Interview answer for target role: ${state.profile.targetRole || 'Junior Data Analyst'}. Question: ${selectedQuestion?.text}`
+          context: `Interview answer for target role: ${state.profile.targetRole || 'Target Role'}. Question: ${selectedQuestion?.text}`
         })
       });
 
@@ -284,8 +245,8 @@ export default function MockInterviewPage() {
         body: JSON.stringify({
           question: selectedQuestion?.text,
           userTranscript: textForScoring,
-          targetRole: state.profile.targetRole || 'Junior Data Analyst',
-          currentRole: state.profile.currentRole || 'High School Math & Science Teacher',
+          targetRole: state.profile.targetRole || 'Target Role',
+          currentRole: state.profile.currentRole || '',
           targetSkill: selectedQuestion?.targetSkill,
           questionType: selectedQuestion?.type,
           attemptNumber: currentAttemptNumber,
@@ -348,6 +309,7 @@ export default function MockInterviewPage() {
   // Generate Questions dynamically with AI
   const handleGenerateAIQuestions = async () => {
     setIsGeneratingQuestions(true);
+    setQuestionError(null);
     try {
       const res = await fetch('/api/ai/generate-question', {
         method: 'POST',
@@ -365,30 +327,17 @@ export default function MockInterviewPage() {
 
       if (Array.isArray(data.questions) && data.questions.length > 0) {
         setCustomQuestionList(data.questions);
-        setSelectedQuestion(data.questions[0]);
+        setSelectedQuestion(null);
         setLatestEvaluation(null);
         setUserAnswer('');
         setCleanedAnswer('');
       }
     } catch (err) {
       console.error('Error generating questions:', err);
+      setQuestionError('Unable to generate interview questions right now. Please try again.');
     } finally {
       setIsGeneratingQuestions(false);
     }
-  };
-
-  // Load realistic sample spoken answer
-  const handleLoadSampleSpokenAnswer = () => {
-    if (selectedQuestion?.type === 'technical') {
-      setUserAnswer(
-        "So um, basically when working with SQL queries, like, to find retention cohorts, I start by doing a LEFT JOIN between our users table and their monthly activity logs. Um, you know, instead of writing nested subqueries that slow things down, I use window functions like LAG or LEAD partitioned by user ID and ordered by login date. Like, that lets us calculate the exact day difference between logins. In my previous work, this helped us discover that like 40% of dropoffs happened in week two, so we targeted our alerts there."
-      );
-    } else {
-      setUserAnswer(
-        "So um, basically when I was teaching, I had like three, no wait, four classes of students and about a third were failing algebra quizzes. Um, instead of just guessing, you know, I categorized all the mistakes in an Excel sheet. And like, the data showed that 80% of errors came from negative sign mistakes, not the algebra formulas. So I changed our review to spend 15 minutes a day on signs, and our midterm pass rates went up by 18%."
-      );
-    }
-    setCleanedAnswer('');
   };
 
   const activeRecordToDisplay = selectedHistoricalRecord || latestEvaluation;
@@ -408,7 +357,7 @@ export default function MockInterviewPage() {
           </h1>
 
           <p className="text-sm text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
-            Practice answering real hiring questions tailored to your target role (<strong className="text-slate-900 dark:text-slate-200">{state.profile.targetRole || 'Junior Data Analyst'}</strong>) and your weakest skill gaps. Speak naturally—our voice cleaner removes fillers before an objective 5-part rubric grades your response.
+            Practice answering real hiring questions tailored to your target role (<strong className="text-slate-900 dark:text-slate-200">{state.profile.targetRole}</strong>) and your weakest skill gaps. Speak naturally—our voice cleaner removes fillers before an objective 5-part rubric grades your response.
           </p>
 
           {weakestSkills.length > 0 && (
@@ -425,152 +374,184 @@ export default function MockInterviewPage() {
 
         <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 shrink-0">
           <button
-            onClick={handleLoadSampleSpokenAnswer}
-            className="inline-flex items-center justify-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
-          >
-            <Sparkles className="w-4 h-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
-            <span>Load Demo Spoken Answer (With Fillers)</span>
-          </button>
-
-          <button
             onClick={handleGenerateAIQuestions}
             disabled={isGeneratingQuestions}
-            className="inline-flex items-center justify-center gap-2 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 px-4 py-2.5 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 rounded-xl transition-all cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
           >
             {isGeneratingQuestions ? <RefreshCw className="w-4 h-4 shrink-0 animate-spin" /> : <Brain className="w-4 h-4 shrink-0" />}
-            <span>{isGeneratingQuestions ? 'Generating...' : 'AI Generate Questions for My Gaps'}</span>
+            <span>{isGeneratingQuestions ? 'Generating Questions...' : 'AI Generate Questions for My Gaps'}</span>
           </button>
         </div>
       </div>
 
-      {/* 2. Question Selection Section */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Step 1: Pick a Question
-            </span>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              Targeted Technical & Behavioral Questions
-            </h2>
-          </div>
-
-          {/* Category Filter Tabs */}
-          <div className="inline-flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium">
-            <button
-              onClick={() => setActiveCategory('all')}
-              className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                activeCategory === 'all'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              All ({allQuestions.length})
-            </button>
-            <button
-              onClick={() => setActiveCategory('technical')}
-              className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                activeCategory === 'technical'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              Technical
-            </button>
-            <button
-              onClick={() => setActiveCategory('behavioral')}
-              className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                activeCategory === 'behavioral'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              Behavioral
-            </button>
-          </div>
+      {questionError && (
+        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-xs font-semibold text-rose-700 dark:text-rose-300">
+          {questionError}
         </div>
+      )}
 
-        {/* Question Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {filteredQuestions.map((q) => {
-            const isSelected = selectedQuestion?.id === q.id;
-            const pastAttemptsForQ = state.interviews.filter(i => i.question === q.text);
-            const bestScore = pastAttemptsForQ.length > 0 
-              ? Math.max(...pastAttemptsForQ.map(i => i.rubric?.totalScore || 0))
-              : null;
+      {allQuestions.length === 0 ? (
+        <EmptyState
+          icon={Brain}
+          title={`Generate Interview Questions for ${state.profile.targetRole}`}
+          description="No questions in your interview bank yet. Click below to generate realistic technical and behavioral interview questions tailored to your target role and weakest skill gaps."
+          action={{
+            label: isGeneratingQuestions ? 'Generating Questions...' : 'Generate Questions with AI',
+            onClick: handleGenerateAIQuestions,
+            disabled: isGeneratingQuestions
+          }}
+        />
+      ) : (
+        <>
+          {/* 2. Question Selection Section */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Step 1: Pick a Question
+                </span>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  Targeted Technical & Behavioral Questions
+                </h2>
+              </div>
 
-            return (
-              <div
-                key={q.id}
-                onClick={() => {
-                  setSelectedQuestion(q);
-                  setLatestEvaluation(null);
-                  setSelectedHistoricalRecord(null);
-                  setUserAnswer('');
-                  setCleanedAnswer('');
-                }}
-                className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
-                  isSelected
-                    ? 'border-indigo-600 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20 shadow-xs'
-                    : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
-                }`}
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                      q.type === 'technical'
-                        ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
-                        : 'bg-indigo-100 dark:bg-indigo-950/70 text-indigo-800 dark:text-indigo-300'
+              {/* Category Filter Tabs */}
+              <div className="inline-flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium">
+                <button
+                  onClick={() => setActiveCategory('all')}
+                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
+                    activeCategory === 'all'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  All ({allQuestions.length})
+                </button>
+                <button
+                  onClick={() => setActiveCategory('technical')}
+                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
+                    activeCategory === 'technical'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  Technical
+                </button>
+                <button
+                  onClick={() => setActiveCategory('behavioral')}
+                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
+                    activeCategory === 'behavioral'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  Behavioral
+                </button>
+              </div>
+            </div>
+
+            {/* Question Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {filteredQuestions.map((q) => {
+                const isSelected = selectedQuestion?.id === q.id;
+                const pastAttemptsForQ = state.interviews.filter(i => i.question === q.text);
+                const bestScore = pastAttemptsForQ.length > 0 
+                  ? Math.max(...pastAttemptsForQ.map(i => i.rubric?.totalScore || 0))
+                  : null;
+                const qNum = allQuestions.findIndex(item => item.id === q.id) + 1;
+
+                return (
+                  <div
+                    key={q.id}
+                    onClick={() => {
+                      setSelectedQuestion(q);
+                      setLatestEvaluation(null);
+                      setSelectedHistoricalRecord(null);
+                      setUserAnswer('');
+                      setCleanedAnswer('');
+                    }}
+                    className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                      isSelected
+                        ? 'border-indigo-600 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20 shadow-xs'
+                        : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] font-black px-2 py-0.5 rounded-md bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+                            Q{qNum}
+                          </span>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                            q.type === 'technical'
+                              ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
+                              : 'bg-indigo-100 dark:bg-indigo-950/70 text-indigo-800 dark:text-indigo-300'
+                          }`}>
+                            {q.type}
+                          </span>
+                        </div>
+
+                        <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate max-w-[180px]">
+                          Target: {q.targetSkill}
+                        </span>
+                      </div>
+
+                      <p className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white leading-snug">
+                        {q.text}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-800/80 text-[11px]">
+                      <span className="text-slate-500 dark:text-slate-400 italic text-[11px] line-clamp-1">
+                        {q.contextWhy}
+                      </span>
+
+                      {bestScore !== null && (
+                        <span className="shrink-0 px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-[10px]">
+                          Best: {bestScore}/25
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Prompt when no question selected */}
+          {!selectedQuestion && (
+            <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                Select a question above to start practicing your spoken answer
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Click on any card above to open the voice recorder, cleaner, and 5-part hiring rubric evaluation.
+              </p>
+            </div>
+          )}
+
+          {/* 3. Selected Question Intake & Voice Recorder */}
+          {selectedQuestion && (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs space-y-5">
+              {/* Active Question Banner */}
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-indigo-600 text-white shadow-xs">
+                      Question {allQuestions.findIndex(q => q.id === selectedQuestion.id) + 1} of {allQuestions.length}
+                    </span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                      selectedQuestion.type === 'technical'
+                        ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
+                        : 'bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300'
                     }`}>
-                      {q.type}
+                      {selectedQuestion.type} Question
                     </span>
 
-                    <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate max-w-[180px]">
-                      Target: {q.targetSkill}
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Testing Skill: <strong className="text-indigo-600 dark:text-indigo-400">{selectedQuestion.targetSkill}</strong>
                     </span>
                   </div>
-
-                  <p className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white leading-snug">
-                    {q.text}
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-800/80 text-[11px]">
-                  <span className="text-slate-500 dark:text-slate-400 italic text-[11px] line-clamp-1">
-                    {q.contextWhy}
-                  </span>
-
-                  {bestScore !== null && (
-                    <span className="shrink-0 px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-[10px]">
-                      Best: {bestScore}/25
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 3. Selected Question Intake & Voice Recorder */}
-      {selectedQuestion && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs space-y-5">
-          {/* Active Question Banner */}
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
-                  selectedQuestion.type === 'technical'
-                    ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
-                    : 'bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300'
-                }`}>
-                  {selectedQuestion.type} Question
-                </span>
-
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Testing Skill: <strong className="text-indigo-600 dark:text-indigo-400">{selectedQuestion.targetSkill}</strong>
-                </span>
-              </div>
 
               <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
                 <span>Attempt #{currentAttemptNumber}</span>
@@ -672,6 +653,8 @@ export default function MockInterviewPage() {
             )}
           </div>
         </div>
+      )}
+        </>
       )}
 
       {/* Loading state indicator during AI evaluation */}
