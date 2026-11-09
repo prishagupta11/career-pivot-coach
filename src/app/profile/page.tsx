@@ -32,7 +32,6 @@ export default function ProfilePage() {
   const [knownSkillsInput, setKnownSkillsInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isCleaningOnly, setIsCleaningOnly] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [cleanedIsStale, setCleanedIsStale] = useState(false);
@@ -172,9 +171,10 @@ export default function ProfilePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.friendlyMessage || data.error || 'Failed to extract profile');
 
-      const extractedSkills = Array.isArray(data.skills) ? data.skills : [];
-      const extractedTools = Array.isArray(data.tools) ? data.tools : [];
-      const combinedKnown = [...extractedSkills, ...extractedTools].filter(Boolean).join(', ');
+      const extractedSkills = Array.isArray(data.skills) ? data.skills : undefined;
+      const extractedTools = Array.isArray(data.tools) ? data.tools : undefined;
+      const incomingAchievements = Array.isArray(data.achievements) ? data.achievements : undefined;
+      const combinedKnown = [...(extractedSkills || []), ...(extractedTools || [])].filter(Boolean).join(', ');
 
       const rawTextToSave = overrideRawText !== undefined ? overrideRawText : (profile.rawSpeech || inputNarrative);
       const cleanedTextToSave = data.cleanedSpeech || profile.cleanedSpeech || rawTextToSave;
@@ -184,6 +184,19 @@ export default function ProfilePage() {
         ? (data.targetRole && data.targetRole.trim() ? data.targetRole.trim() : (profile.targetRole || ''))
         : (data.targetRole || profile.targetRole);
 
+      // Preserve manually edited skills and achievements when re-cleaning, but allow full resume overwrite
+      const mergedSkills = fromResume
+        ? (extractedSkills !== undefined ? extractedSkills : (profile.skills || []))
+        : Array.from(new Set([...(profile.skills || []), ...(extractedSkills || [])]));
+
+      const mergedTools = fromResume
+        ? (extractedTools !== undefined ? extractedTools : (profile.tools || []))
+        : Array.from(new Set([...(profile.tools || []), ...(extractedTools || [])]));
+
+      const mergedAchievements = fromResume
+        ? (incomingAchievements !== undefined ? incomingAchievements : profile.achievements)
+        : Array.from(new Set([...profile.achievements, ...(incomingAchievements || [])]));
+
       const updated: UserProfile = {
         ...profile,
         rawSpeech: rawTextToSave,
@@ -191,10 +204,10 @@ export default function ProfilePage() {
         currentRole: data.currentRole || profile.currentRole || '',
         targetRole: resolvedTargetRole,
         yearsExperience: typeof data.yearsExperience === 'number' ? data.yearsExperience : (Number(data.yearsExperience) || profile.yearsExperience),
-        skills: extractedSkills.length > 0 ? extractedSkills : (profile.skills || []),
-        tools: extractedTools.length > 0 ? extractedTools : (profile.tools || []),
+        skills: mergedSkills,
+        tools: mergedTools,
         responsibilities: Array.isArray(data.responsibilities) && data.responsibilities.length > 0 ? data.responsibilities : profile.responsibilities,
-        achievements: Array.isArray(data.achievements) && data.achievements.length > 0 ? data.achievements : profile.achievements,
+        achievements: mergedAchievements,
         transferableSkills: Array.isArray(data.transferableSkills) && data.transferableSkills.length > 0 ? data.transferableSkills : profile.transferableSkills,
         lastUpdated: new Date().toISOString()
       };
@@ -332,51 +345,6 @@ export default function ProfilePage() {
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
       handleFileUpload(file);
-    }
-  };
-
-  // Re-clean just the speech narrative
-  const handleCleanSpeechOnly = async () => {
-    if (!profile?.rawSpeech.trim()) {
-      setStatusMessage({ text: 'Please enter or record some spoken narrative first.', type: 'error' });
-      return;
-    }
-
-    setIsCleaningOnly(true);
-    setStatusMessage(null);
-
-    try {
-      const res = await fetch('/api/ai/clean-speech', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rawSpeech: profile.rawSpeech })
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to clean speech');
-
-      const updated = {
-        ...profile,
-        cleanedSpeech: data.cleanText || data.cleanedSpeech,
-        lastUpdated: new Date().toISOString()
-      };
-      setProfile(updated);
-      setCleanedIsStale(false);
-
-      const state = getStoredState();
-      saveStoredState({ ...state, profile: updated });
-
-      const scCount = data.details?.selfCorrectionsResolved?.length || 0;
-      const fillerCount = data.details?.fillersRemoved?.length || 0;
-      setStatusMessage({ 
-        text: `Speech cleaned! Removed ${fillerCount} fillers and resolved ${scCount} self-corrections.`, 
-        type: 'success' 
-      });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to clean speech';
-      setStatusMessage({ text: msg, type: 'error' });
-    } finally {
-      setIsCleaningOnly(false);
     }
   };
 
@@ -617,9 +585,9 @@ export default function ProfilePage() {
       </div>
 
       {/* AI Processing Loading State */}
-      {(isProcessing || isCleaningOnly || isUploading) && (
+      {(isProcessing || isUploading) && (
         <AILoadingIndicator
-          title={isCleaningOnly ? "AI Speech Cleaner Active" : (isUploading ? "AI Resume Intake & Skills Translator Active" : "AI Profile Extraction & Skills Translator Active")}
+          title={isUploading ? "AI Resume Intake & Skills Translator Active" : "AI Profile Extraction & Skills Translator Active"}
           stages={[
             "Reading background narrative & extracting text layers...",
             "Removing verbal filler words ('um', 'you know', 'basically') & resolving false starts...",
@@ -770,16 +738,6 @@ export default function ProfilePage() {
             </span>
 
             <div className="flex flex-wrap items-center gap-2.5">
-              <button
-                type="button"
-                onClick={handleCleanSpeechOnly}
-                disabled={isCleaningOnly || isProcessing || !profile.rawSpeech?.trim()}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-all cursor-pointer"
-              >
-                {isCleaningOnly ? <RefreshCw size={14} className="animate-spin shrink-0" /> : <Sparkles size={14} className="shrink-0" />}
-                <span>{isCleaningOnly ? 'Cleaning...' : 'Clean Speech Only'}</span>
-              </button>
-
               <button
                 type="button"
                 onClick={() => handleRunCleanupAndExtraction()}
