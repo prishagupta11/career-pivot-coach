@@ -130,41 +130,10 @@ Respond ONLY with this JSON schema:
           sentences[0] || 'Managed daily operations, tracking metrics and cohort performance',
           sentences[1] || 'Collaborated with diverse stakeholders to communicate status and resolve operational challenges'
         ],
-        achievements: [
-          sentences.find((s: string) => /\d+%|\$|\d+\s*(increase|decrease|students|clients|saving|pass)/i.test(s)) ||
-            'Engineered diagnostic reporting model that elevated cohort exam pass rates by 18% YOY',
-          'Standardized reporting frameworks reducing recurring diagnostic and administrative calculation time by 35%'
-        ],
-        transferableSkills: [
-          {
-            originalSkill: "Running the school timetable system and resolving multi-department room conflicts",
-            translatedSkill: "Scheduling Logic, Resource Optimization & Structured Data Modeling",
-            category: "Technical",
-            rationale: "Demonstrates constraint satisfaction modeling, relational integrity, and structured data handling required in modern analytics teams.",
-            strengthLevel: "Intermediate"
-          },
-          {
-            originalSkill: `Tracking and analyzing cohort performance and record keeping in spreadsheets`,
-            translatedSkill: "Exploratory Data Analysis (EDA) & Spreadsheet Modeling",
-            category: "Technical",
-            rationale: "Directly mirrors business data cleansing, variance analysis, and statistical summary reporting.",
-            strengthLevel: "Advanced"
-          },
-          {
-            originalSkill: "Diagnosing learning failure patterns and restructuring review schedules",
-            translatedSkill: "Data-Informed Root Cause Analysis & Process Optimization",
-            category: "Domain",
-            rationale: "Demonstrates ability to convert descriptive performance metrics into prescriptive business interventions.",
-            strengthLevel: "Intermediate"
-          },
-          {
-            originalSkill: "Quarterly grade and performance presentations to parents and administrators",
-            translatedSkill: "Executive Stakeholder Reporting & Data Storytelling",
-            category: "Soft Skill",
-            rationale: "Translating quantitative metrics into layman business terminology for cross-functional leaders.",
-            strengthLevel: "Advanced"
-          }
-        ]
+        achievements: sentences
+          .filter((s: string) => /\d+%|\$|\d+\s*(increase|decrease|growth|saving|reduction|improvement)/i.test(s))
+          .slice(0, 3),
+        transferableSkills: []
       };
     };
 

@@ -23,13 +23,13 @@ import {
   Check,
   UploadCloud
 } from 'lucide-react';
-import { getStoredState, saveStoredState } from '@/lib/storage';
+import { getStoredState, saveStoredState, INITIAL_EMPTY_STATE } from '@/lib/storage';
 import { TransferableSkill, UserProfile, SkillCategory } from '@/types';
 import AILoadingIndicator from '@/components/AILoadingIndicator';
 import Link from 'next/link';
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<UserProfile>(() => getStoredState().profile);
+  const [profile, setProfile] = useState<UserProfile>(INITIAL_EMPTY_STATE.profile);
   const [knownSkillsInput, setKnownSkillsInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -56,6 +56,7 @@ export default function ProfilePage() {
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
+    setProfile(getStoredState().profile);
     const handleStorage = () => {
       setProfile(getStoredState().profile);
     };

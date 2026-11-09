@@ -42,14 +42,14 @@ interface GeneratePlanPayload {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const rawHours = Number(body.hoursPerWeek);
+    const rawWeeks = Number(body.durationWeeks);
+    const hoursPerWeek = Number.isFinite(rawHours) ? Math.min(40, Math.max(1, Math.round(rawHours))) : 10;
+    const durationWeeks = Number.isFinite(rawWeeks) ? Math.min(24, Math.max(1, Math.round(rawWeeks))) : 4;
     const {
-      hoursPerWeek = 10,
-      durationWeeks = 4,
       skillGaps = [],
       profile
     } = body as {
-      hoursPerWeek: number;
-      durationWeeks: number;
       skillGaps: SkillGapItem[];
       profile: UserProfile;
     };

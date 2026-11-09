@@ -51,9 +51,10 @@ export async function callGeminiStructured<T>(options: {
   prompt: string;
   systemInstruction?: string;
   schemaDescription?: string;
+  validate?: (data: unknown) => boolean;
   fallbackGenerator?: () => T;
 }): Promise<GeminiStructuredResult<T>> {
-  const { prompt, systemInstruction, schemaDescription, fallbackGenerator } = options;
+  const { prompt, systemInstruction, schemaDescription, validate, fallbackGenerator } = options;
 
   // If no Gemini API key is configured, gracefully use the fallback generator
   if (!ai || !apiKey) {
@@ -92,6 +93,9 @@ export async function callGeminiStructured<T>(options: {
     const rawText = response.text || '';
     const cleaned = cleanJsonString(rawText);
     const parsed = JSON.parse(cleaned) as T;
+    if (validate && !validate(parsed)) {
+      throw new Error('Model output failed validation');
+    }
 
     return {
       success: true,
@@ -125,6 +129,9 @@ ${prompt}`;
       const retryText = retryResponse.text || '';
       const retryCleaned = cleanJsonString(retryText);
       const retryParsed = JSON.parse(retryCleaned) as T;
+      if (validate && !validate(retryParsed)) {
+        throw new Error('Model retry output failed validation');
+      }
 
       return {
         success: true,
