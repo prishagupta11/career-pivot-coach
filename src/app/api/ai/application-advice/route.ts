@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { callGeminiStructured } from '@/lib/gemini';
+import { verifyAuth } from '@/lib/serverAuth';
 
 interface DimensionBreakdown {
   name: string;
@@ -21,6 +22,11 @@ interface ApplicationAdviceResponse {
 }
 
 export async function POST(req: Request) {
+  const authResult = await verifyAuth(req);
+  if ('response' in authResult) {
+    return authResult.response;
+  }
+
   try {
     const { 
       totalApplications, 

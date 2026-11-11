@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callGeminiStructured } from '@/lib/gemini';
 import { LearningPlan, LearningWeek, PlanChangeItem } from '@/types';
+import { verifyAuth } from '@/lib/serverAuth';
 
 interface AdjustPlanResponse {
   summary: string;
@@ -10,6 +11,11 @@ interface AdjustPlanResponse {
 }
 
 export async function POST(req: Request) {
+  const authResult = await verifyAuth(req);
+  if ('response' in authResult) {
+    return authResult.response;
+  }
+
   try {
     const { 
       learningPlan, 

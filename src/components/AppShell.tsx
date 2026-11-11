@@ -10,11 +10,13 @@ import {
   syncUserFromFirestore,
   importLegacyBrowserData,
   declineLegacyImport,
+  useAppState,
 } from '@/lib/storage';
 import { Download, Sparkles } from 'lucide-react';
 
 function AppShellContent({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
+  const [appState] = useAppState();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -55,7 +57,7 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
     };
   }, [user]);
 
-  // Route protection
+  // Route protection and Onboarding guard
   useEffect(() => {
     if (authLoading) return;
 
@@ -65,13 +67,26 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
       const currentUrl = query ? `${pathname}?${query}` : pathname;
       const redirectParam = currentUrl && currentUrl !== '/' ? `?redirect=${encodeURIComponent(currentUrl)}` : '';
       router.replace(`/login${redirectParam}`);
-    } else if (user && isLoginPage) {
-      // Signed in user on login page -> send to requested destination or dashboard
-      const target = searchParams?.get('redirect');
-      const destination = target && target.startsWith('/') && !target.startsWith('//') ? target : '/';
-      router.replace(destination);
+      return;
     }
-  }, [user, authLoading, pathname, searchParams, router, isLoginPage]);
+
+    if (user && isLoginPage) {
+      // If user hasn't completed onboarding, send to /onboarding
+      if (!appState.onboarding?.completed) {
+        router.replace('/onboarding');
+      } else {
+        const target = searchParams?.get('redirect');
+        const destination = target && target.startsWith('/') && !target.startsWith('//') ? target : '/';
+        router.replace(destination);
+      }
+      return;
+    }
+
+    // When a user signs in and onboarding isn't completed, send them to /onboarding from every other page
+    if (user && syncedUserId === user.uid && !appState.onboarding?.completed && !isOnboardingPage && !isLoginPage) {
+      router.replace('/onboarding');
+    }
+  }, [user, authLoading, pathname, searchParams, router, isLoginPage, isOnboardingPage, appState.onboarding?.completed, syncedUserId]);
 
   // While Firebase is checking auth state, show loading screen so nothing flashes
   if (authLoading) {
@@ -92,6 +107,11 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
   const isWaitingForFirestore = Boolean(user && syncedUserId !== user.uid && !isLoginPage);
   if (isWaitingForFirestore) {
     return <LoadingScreen message="Loading your career pivot data from cloud..." />;
+  }
+
+  // If not onboarded and trying to view other pages, show loading screen while redirecting
+  if (user && !appState.onboarding?.completed && !isOnboardingPage && !isLoginPage) {
+    return <LoadingScreen message="Redirecting to onboarding wizard..." />;
   }
 
   return (

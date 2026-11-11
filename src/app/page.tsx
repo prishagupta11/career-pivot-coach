@@ -9,12 +9,16 @@ import {
   Send, 
   CheckCircle2, 
   AlertTriangle, 
-  FolderGit2
+  FolderGit2,
+  Target,
+  AudioWaveform
 } from 'lucide-react';
 import { useAppState } from '@/lib/storage';
+import { useAuth } from '@/context/AuthContext';
 
 export default function DashboardPage() {
   const [state] = useAppState();
+  const { user } = useAuth();
 
   if (!state) {
     return (
@@ -35,6 +39,59 @@ export default function DashboardPage() {
   const recentInterviewScore = interviews[0]?.rubric?.totalScore || interviews[0]?.scores?.totalScore || 0;
   const maxInterviewScore = interviews[0]?.rubric?.maxScore || (interviews[0]?.scores ? 20 : 25);
 
+  const candidateName = profile.fullName?.trim() || user?.displayName || 'Candidate';
+  const currentRoleDisplay = profile.currentRole?.trim() || (profile.targetRole ? 'Transitioning Professional' : 'Candidate');
+
+  // Calculate Next Best Action
+  let nextAction = {
+    title: 'Add Target Job Descriptions to Unlock Skill Gap Map',
+    description: 'You skipped adding job postings during setup. Paste at least 3 job descriptions to map your transferable experience against real employer demand.',
+    badge: 'Priority 1 • Market Demand',
+    ctaText: 'Add Job Descriptions',
+    ctaHref: '/skill-gaps',
+    icon: Target,
+  };
+
+  if (jobPostings.length === 0) {
+    nextAction = {
+      title: 'Add Target Job Descriptions to Unlock Skill Gap Map',
+      description: 'You skipped adding job postings during setup. Paste at least 3 job descriptions to map your transferable experience against real employer demand.',
+      badge: 'Priority 1 • Market Demand',
+      ctaText: 'Add Job Descriptions',
+      ctaHref: '/skill-gaps',
+      icon: Target,
+    };
+  } else if (!learningPlan?.weeks || learningPlan.weeks.length === 0) {
+    nextAction = {
+      title: 'Generate Your Custom Learning Curriculum',
+      description: 'Your skill gaps have been identified. Generate a week-by-week curriculum and portfolio project blueprint tailored to your weekly hours.',
+      badge: 'Priority 2 • Action Plan',
+      ctaText: 'Generate Learning Plan',
+      ctaHref: '/learning-plan',
+      icon: CalendarDays,
+    };
+  } else if (!interviews || interviews.length === 0) {
+    nextAction = {
+      title: 'Practice Your First Voice Mock Interview',
+      description: 'Test your ability to articulate your transferable experience in the lexicon of your target role. Get scored against an objective 4-factor hiring rubric.',
+      badge: 'Priority 3 • Domain Fluency',
+      ctaText: 'Start Voice Interview',
+      ctaHref: '/mock-interview',
+      icon: AudioWaveform,
+    };
+  } else {
+    nextAction = {
+      title: 'Track Your Active Applications & Callback Rates',
+      description: 'Log your applications to correlate callback rates with your skill match percentages and learn which roles generate the highest employer interest.',
+      badge: 'Outcome Tracking',
+      ctaText: 'Open Application Tracker',
+      ctaHref: '/applications',
+      icon: Send,
+    };
+  }
+
+  const ActionIcon = nextAction.icon;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
@@ -53,13 +110,13 @@ export default function DashboardPage() {
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              {profile.fullName || 'Candidate Profile'}
+              {candidateName}
             </h1>
 
             {/* Career Pivot Pathway */}
             <div className="flex flex-wrap items-center gap-2 pt-1 text-xs sm:text-sm">
               <span className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium border border-slate-200 dark:border-slate-700">
-                {profile.currentRole || 'Previous Role'}
+                {currentRoleDisplay}
               </span>
               <ArrowRight size={16} className="w-4 h-4 shrink-0 text-slate-400 dark:text-slate-500" />
               {profile.targetRole ? (
@@ -81,10 +138,10 @@ export default function DashboardPage() {
           <div className="lg:col-span-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 flex items-center justify-between gap-4">
             <div>
               <div className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-                {skillGapMap.overallMatchPercentage || 0}%
+                {jobPostings.length === 0 ? 'Pending' : `${skillGapMap.overallMatchPercentage || 0}%`}
               </div>
               <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
-                Market Match
+                {jobPostings.length === 0 ? 'Postings Needed' : 'Market Match'}
               </div>
             </div>
 
@@ -103,6 +160,37 @@ export default function DashboardPage() {
           </div>
 
         </div>
+      </section>
+
+      {/* 2. NEXT BEST ACTION CARD */}
+      <section 
+        aria-label="Next Best Action"
+        className="p-5 sm:p-6 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/60 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+      >
+        <div className="flex items-start gap-4">
+          <div className="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <ActionIcon size={20} className="w-5 h-5" />
+          </div>
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold">
+              <span>{nextAction.badge}</span>
+            </div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              {nextAction.title}
+            </h2>
+            <p className="text-xs text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+              {nextAction.description}
+            </p>
+          </div>
+        </div>
+
+        <Link
+          href={nextAction.ctaHref}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors shrink-0 whitespace-nowrap cursor-pointer"
+        >
+          <span>{nextAction.ctaText}</span>
+          <ArrowRight size={14} className="w-3.5 h-3.5" />
+        </Link>
       </section>
 
       {/* 2. 4-PILLAR STATUS METRIC CARDS */}
