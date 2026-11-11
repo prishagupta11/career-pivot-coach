@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callGeminiStructured } from '@/lib/gemini';
 import { FivePartRubric } from '@/types';
+import { verifyAuth } from '@/lib/serverAuth';
 
 interface ScoredInterviewResponse {
   rubric: FivePartRubric;
@@ -21,6 +22,11 @@ interface ScoredInterviewResponse {
 }
 
 export async function POST(req: Request) {
+  const authResult = await verifyAuth(req);
+  if ('response' in authResult) {
+    return authResult.response;
+  }
+
   try {
     const { 
       question, 

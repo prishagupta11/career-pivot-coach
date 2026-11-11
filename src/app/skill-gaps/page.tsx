@@ -23,6 +23,7 @@ import {
   Check
 } from 'lucide-react';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/apiClient';
 import { useAppState, saveStoredState } from '@/lib/storage';
 import { AppState, JobPosting, SkillGapItem, SkillGapMap } from '@/types';
 import AILoadingIndicator from '@/components/AILoadingIndicator';
@@ -114,7 +115,7 @@ export default function SkillGapsPage() {
     setSavedSuccessBanner(false);
 
     try {
-      const res = await fetch('/api/ai/map-skill-gaps', {
+      const res = await apiFetch('/api/ai/map-skill-gaps', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

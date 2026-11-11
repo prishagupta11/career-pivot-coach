@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useSyncExternalStore } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Mic, 
   MicOff, 
@@ -26,22 +26,16 @@ import { getStoredState, saveStoredState } from '@/lib/storage';
 import { TransferableSkill, UserProfile, SkillCategory } from '@/types';
 import AILoadingIndicator from '@/components/AILoadingIndicator';
 import Link from 'next/link';
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { useResumeUpload } from '@/hooks/useResumeUpload';
+import { useProfileExtraction } from '@/hooks/useProfileExtraction';
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile>(() => getStoredState().profile);
   const [knownSkillsInput, setKnownSkillsInput] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [cleanedIsStale, setCleanedIsStale] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const speechSupported = useSyncExternalStore(
-    () => () => {},
-    () => typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window),
-    () => true
-  );
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'info' | 'success' | 'error' } | null>(null);
   const [savedSuccessBanner, setSavedSuccessBanner] = useState(false);
 
@@ -50,92 +44,28 @@ export default function ProfilePage() {
   const [newToolText, setNewToolText] = useState('');
   const [newAchievementText, setNewAchievementText] = useState('');
 
-  // Web Speech recognition reference
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recognitionRef = useRef<any>(null);
+  // Reusable Hooks
+  const handleSpeechChunk = useCallback((chunk: string) => {
+    setProfile(prev => {
+      if (!prev) return prev;
+      const current = (prev.rawSpeech || '').trim();
+      return { ...prev, rawSpeech: current ? `${current} ${chunk}` : chunk };
+    });
+  }, []);
+
+  const { isRecording, speechSupported, toggleRecording } = useSpeechRecognition(handleSpeechChunk);
+  const { isUploading, uploadError, setUploadError, parseResumeFile } = useResumeUpload();
+  const { isExtracting: isProcessing, extractProfile } = useProfileExtraction();
 
   useEffect(() => {
     const handleStorage = () => {
       setProfile(getStoredState().profile);
     };
     window.addEventListener('career_pivot_storage_updated', handleStorage);
-
-    // Initialize Web Speech API if supported
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = 'en-US';
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      recognition.onresult = (event: any) => {
-        let finalChunk = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          if (event.results[i].isFinal) {
-            finalChunk += event.results[i][0].transcript + ' ';
-          }
-        }
-        if (finalChunk.trim()) {
-          setProfile(prev => {
-            if (!prev) return prev;
-            const current = (prev.rawSpeech || '').trim();
-            const addition = finalChunk.trim();
-            return { ...prev, rawSpeech: current ? `${current} ${addition}` : addition };
-          });
-        }
-      };
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      recognition.onerror = (e: any) => {
-        console.warn('Speech recognition error:', e.error);
-        setIsRecording(false);
-      };
-
-      recognition.onend = () => {
-        setIsRecording(false);
-      };
-
-      recognitionRef.current = recognition;
-    }
-
     return () => {
       window.removeEventListener('career_pivot_storage_updated', handleStorage);
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.abort();
-        } catch {}
-      }
     };
   }, []);
-
-  const toggleRecording = () => {
-    const rec = recognitionRef.current;
-    if (!rec) {
-      setStatusMessage({ text: 'Speech recognition is not supported in this browser.', type: 'error' });
-      return;
-    }
-    if (isRecording) {
-      try {
-        rec.stop();
-      } catch {}
-      setIsRecording(false);
-      setStatusMessage({ text: 'Recording paused. Ready to run cleanup and extract profile.', type: 'info' });
-    } else {
-      try {
-        rec.start();
-        setIsRecording(true);
-        setStatusMessage({ text: 'Listening... speak naturally about your experience, past duties, and tools.', type: 'info' });
-      } catch (err: unknown) {
-        if (err instanceof DOMException && err.name === 'InvalidStateError') {
-          setIsRecording(true);
-        } else {
-          console.warn('Speech recognition notice:', err);
-        }
-      }
-    }
-  };
 
   // Run cleanup & extraction in one smooth flow
   const handleRunCleanupAndExtraction = async (overrideRawText?: string, fromResume = false) => {
@@ -149,52 +79,41 @@ export default function ProfilePage() {
       return;
     }
 
-    setIsProcessing(true);
     setStatusMessage(null);
     setSavedSuccessBanner(false);
 
     try {
-      const res = await fetch('/api/ai/extract-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cleanedSpeech: overrideRawText || !useCleaned ? undefined : profile.cleanedSpeech?.trim(),
-          rawSpeech: overrideRawText || profile.rawSpeech?.trim() || undefined,
-          speechText: inputNarrative,
-          currentRole: fromResume ? undefined : profile.currentRole,
-          targetRole: fromResume ? undefined : profile.targetRole,
-          yearsExperience: fromResume ? undefined : profile.yearsExperience,
-          knownSkills: fromResume ? undefined : knownSkillsInput
-        })
+      const data = await extractProfile({
+        narrativeText: inputNarrative,
+        currentRole: fromResume ? undefined : profile.currentRole,
+        targetRole: fromResume ? undefined : profile.targetRole,
+        yearsExperience: fromResume ? undefined : profile.yearsExperience,
+        knownSkills: fromResume ? undefined : knownSkillsInput,
+        isFromResume: fromResume,
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.friendlyMessage || data.error || 'Failed to extract profile');
-
-      const extractedSkills = Array.isArray(data.skills) ? data.skills : undefined;
-      const extractedTools = Array.isArray(data.tools) ? data.tools : undefined;
-      const incomingAchievements = Array.isArray(data.achievements) ? data.achievements : undefined;
+      const extractedSkills = data.skills;
+      const extractedTools = data.tools;
+      const incomingAchievements = data.achievements;
       const combinedKnown = [...(extractedSkills || []), ...(extractedTools || [])].filter(Boolean).join(', ');
 
       const rawTextToSave = overrideRawText !== undefined ? overrideRawText : (profile.rawSpeech || inputNarrative);
       const cleanedTextToSave = data.cleanedSpeech || profile.cleanedSpeech || rawTextToSave;
 
-      // Leave Target Role for the user unless it's explicit in the resume
       const resolvedTargetRole = fromResume
         ? (data.targetRole && data.targetRole.trim() ? data.targetRole.trim() : (profile.targetRole || ''))
         : (data.targetRole || profile.targetRole);
 
-      // Preserve manually edited skills and achievements when re-cleaning, but allow full resume overwrite
       const mergedSkills = fromResume
-        ? (extractedSkills !== undefined ? extractedSkills : (profile.skills || []))
+        ? (extractedSkills !== undefined && extractedSkills.length > 0 ? extractedSkills : (profile.skills || []))
         : Array.from(new Set([...(profile.skills || []), ...(extractedSkills || [])]));
 
       const mergedTools = fromResume
-        ? (extractedTools !== undefined ? extractedTools : (profile.tools || []))
+        ? (extractedTools !== undefined && extractedTools.length > 0 ? extractedTools : (profile.tools || []))
         : Array.from(new Set([...(profile.tools || []), ...(extractedTools || [])]));
 
       const mergedAchievements = fromResume
-        ? (incomingAchievements !== undefined ? incomingAchievements : profile.achievements)
+        ? (incomingAchievements !== undefined && incomingAchievements.length > 0 ? incomingAchievements : profile.achievements)
         : Array.from(new Set([...profile.achievements, ...(incomingAchievements || [])]));
 
       const updated: UserProfile = {
@@ -241,30 +160,10 @@ export default function ProfilePage() {
       } else {
         setStatusMessage({ text: msg, type: 'error' });
       }
-    } finally {
-      setIsProcessing(false);
-      setIsUploading(false);
     }
   };
 
   const handleFileUpload = async (file: File) => {
-    setUploadError(null);
-
-    // Validate size (max 5 MB)
-    const MAX_SIZE = 5 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-      setUploadError('File size exceeds the 5 MB limit. Please upload a smaller file.');
-      return;
-    }
-
-    // Validate extension
-    const extension = file.name.split('.').pop()?.toLowerCase();
-    const allowed = ['pdf', 'docx', 'txt'];
-    if (!extension || !allowed.includes(extension)) {
-      setUploadError(`Unsupported file format (.${extension || 'unknown'}). Please upload a PDF, DOCX, or TXT file.`);
-      return;
-    }
-
     // Check if user has already edited fields
     const hasExistingContent = Boolean(
       (profile?.rawSpeech && profile.rawSpeech.trim()) ||
@@ -286,40 +185,18 @@ export default function ProfilePage() {
       }
     }
 
-    setIsUploading(true);
     setStatusMessage(null);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const parseRes = await fetch('/api/resume/parse', {
-        method: 'POST',
-        body: formData
-      });
-
-      const parseData = await parseRes.json();
-      if (!parseRes.ok) {
-        throw new Error(parseData.error || 'Failed to parse resume file.');
-      }
-
-      const extractedText = parseData.text;
-      if (!extractedText || !extractedText.trim()) {
-        throw new Error('No readable text could be extracted from this file. If this is a scanned document, please convert it with OCR or paste the text directly.');
-      }
-
-      // Populate rawSpeech in textarea
+      const extractedText = await parseResumeFile(file);
       setProfile(prev => ({
         ...prev,
         rawSpeech: extractedText
       }));
 
-      // Run existing cleaning + extraction pipeline on it
       await handleRunCleanupAndExtraction(extractedText, true);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to process resume';
-      setUploadError(msg);
-      setIsUploading(false);
+    } catch {
+      // Error is tracked in uploadError inside hook
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }

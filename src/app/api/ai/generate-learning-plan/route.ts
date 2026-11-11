@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callGeminiStructured } from '@/lib/gemini';
 import { UserProfile, SkillGapItem } from '@/types';
+import { verifyAuth } from '@/lib/serverAuth';
 
 interface GeneratePlanPayload {
   durationWeeks: number;
@@ -40,6 +41,11 @@ interface GeneratePlanPayload {
 }
 
 export async function POST(req: Request) {
+  const authResult = await verifyAuth(req);
+  if ('response' in authResult) {
+    return authResult.response;
+  }
+
   try {
     const body = await req.json();
     const rawHours = Number(body.hoursPerWeek);

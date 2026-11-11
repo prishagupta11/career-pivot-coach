@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAppState, saveStoredState } from '@/lib/storage';
 import { ApplicationStatus, JobApplication, CompanySize, WorkLocation, ApplicationSource } from '@/types';
+import { apiFetch } from '@/lib/apiClient';
 
 interface DimensionStat {
   name: string;
@@ -127,7 +128,7 @@ export default function ApplicationsPage() {
     const fetchAdvice = async () => {
       setIsAnalyzing(true);
       try {
-        const res = await fetch('/api/ai/application-advice', {
+        const res = await apiFetch('/api/ai/application-advice', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

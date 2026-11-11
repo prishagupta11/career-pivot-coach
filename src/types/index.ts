@@ -12,6 +12,12 @@ export interface TransferableSkill {
   strengthLevel: 'Foundational' | 'Intermediate' | 'Advanced';
 }
 
+export interface UserPreferences {
+  targetTimeline?: string;
+  workMode?: 'remote' | 'hybrid' | 'onsite' | string;
+  preferredLocation?: string;
+}
+
 export interface UserProfile {
   fullName: string;
   currentRole: string;
@@ -25,6 +31,7 @@ export interface UserProfile {
   achievements: string[];
   transferableSkills: TransferableSkill[];
   lastUpdated: string;
+  preferences?: UserPreferences;
 }
 
 export interface JobPosting {
@@ -209,8 +216,15 @@ export interface PlanAdjustmentRecord {
   revisedPlan: LearningPlan;
 }
 
+export interface OnboardingState {
+  completed: boolean;
+  currentStep: number;
+  completedAt?: string | null;
+}
+
 export interface AppState {
   profile: UserProfile;
+  onboarding?: OnboardingState;
   jobPostings: JobPosting[];
   skillGapMap: SkillGapMap;
   learningPlan: LearningPlan;
