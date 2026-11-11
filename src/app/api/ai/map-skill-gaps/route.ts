@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callGeminiStructured } from '@/lib/gemini';
 import { UserProfile, TransferableSkill, JobPosting, SkillGapItem, CandidateMatchStatus, SkillCategory, GapSeverity } from '@/types';
+import { verifyAuth } from '@/lib/serverAuth';
 
 interface MapSkillGapsPayload {
   overallMatchPercentage: number;
@@ -23,6 +24,11 @@ interface MapSkillGapsPayload {
 }
 
 export async function POST(req: Request) {
+  const authResult = await verifyAuth(req);
+  if ('response' in authResult) {
+    return authResult.response;
+  }
+
   try {
     const body = await req.json();
     const { 

@@ -1,6 +1,6 @@
 import { useSyncExternalStore, useCallback } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db, isFirebaseConfigured } from '@/lib/firebase';
+import { db, auth, isFirebaseConfigured } from '@/lib/firebase';
 import { AppState, OnboardingState, UserPreferences } from '@/types';
 
 export const LEGACY_STORAGE_KEY = 'career_pivot_coach_state_v1';
@@ -300,7 +300,7 @@ export async function flushPendingSave(): Promise<void> {
   const { userId, state } = pendingSave;
   pendingSave = null;
 
-  if (!userId || !isFirebaseConfigured) return;
+  if (!userId || !isFirebaseConfigured || !auth.currentUser || auth.currentUser.uid !== userId) return;
 
   try {
     const sanitized = sanitizeStateForFirestore(state);
@@ -385,7 +385,8 @@ export function declineLegacyImport(userId: string): void {
 export async function syncUserFromFirestore(userId: string): Promise<{ state: AppState; hasLegacyDataToImport: boolean }> {
   setActiveStorageUser(userId);
 
-  if (!isFirebaseConfigured) {
+  // If Firebase is not configured, or if there is no matching active Firebase auth session (e.g. demo mode), use local fast cache
+  if (!isFirebaseConfigured || !auth.currentUser || auth.currentUser.uid !== userId) {
     const localState = getStoredState();
     const hasLegacy = hasLegacyBrowserData(userId);
     return { state: localState, hasLegacyDataToImport: hasLegacy };
@@ -393,9 +394,13 @@ export async function syncUserFromFirestore(userId: string): Promise<{ state: Ap
 
   try {
     const docRef = doc(db, 'users', userId, 'appState', 'main');
-    const docSnap = await getDoc(docRef);
+    // Guard against network stalling with a 3.5s timeout race
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Firestore timeout')), 3500)
+    );
+    const docSnap = await Promise.race([getDoc(docRef), timeoutPromise]);
 
-    if (docSnap.exists()) {
+    if (docSnap && docSnap.exists()) {
       const data = docSnap.data() as AppState;
       const normalized = normalizeState(data);
       const key = getUserStorageKey(userId);

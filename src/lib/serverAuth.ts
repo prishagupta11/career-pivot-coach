@@ -41,12 +41,15 @@ export async function verifyAuth(req: Request): Promise<VerifyAuthResult> {
   }
 
   // Allow developer demo / mock token in non-production environments
-  if (process.env.NODE_ENV !== 'production' && token === 'mock-jwt-token') {
+  if (process.env.NODE_ENV !== 'production' && token.startsWith('mock-jwt-token')) {
+    const parts = token.split(':');
+    const uid = parts[1] || 'demo-pivot-candidate-2026';
+    const displayName = parts[2] || 'Alex Rivera';
     return {
       user: {
-        uid: 'demo-pivot-candidate-2026',
-        email: 'alex.rivera@example.com',
-        displayName: 'Alex Rivera',
+        uid,
+        email: `${uid}@example.com`,
+        displayName,
       },
     };
   }

@@ -59,10 +59,11 @@ export default function LoginClient() {
       } else if (code === 'auth/operation-not-allowed') {
         setErrorMessage('Google sign-in is not enabled in your Firebase console. Please enable the Google provider in Firebase Authentication.');
       } else {
+        const detail = code ? ` (${code})` : '';
         setErrorMessage(
           authError?.message && !authError.message.includes('Firebase:')
-            ? authError.message
-            : 'Unable to complete sign-in with Google. Please check your configuration or try again.'
+            ? `${authError.message}${detail}`
+            : `Unable to complete sign-in with Google${detail}. Please try again.`
         );
       }
     } finally {
@@ -250,7 +251,7 @@ export default function LoginClient() {
               {/* Developer Demo Account Bypass */}
               <button
                 type="button"
-                onClick={signInWithDemo}
+                onClick={() => signInWithDemo()}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/60 dark:bg-indigo-950/40 hover:bg-indigo-100/70 dark:hover:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-medium text-xs transition-colors cursor-pointer"
               >
                 <UserCheck className="w-3.5 h-3.5 shrink-0" />

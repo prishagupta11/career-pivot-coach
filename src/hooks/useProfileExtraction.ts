@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { TransferableSkill } from '@/types';
+import { apiFetch } from '@/lib/apiClient';
 
 export interface ExtractedProfileResult {
   currentRole?: string;
@@ -32,7 +33,7 @@ export function useProfileExtraction() {
       setExtractError(null);
 
       try {
-        const res = await fetch('/api/ai/extract-profile', {
+        const res = await apiFetch('/api/ai/extract-profile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

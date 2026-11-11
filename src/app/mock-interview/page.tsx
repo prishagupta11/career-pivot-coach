@@ -21,6 +21,7 @@ import { useAppState, saveStoredState } from '@/lib/storage';
 import { InterviewRecord, RubricCriterion } from '@/types';
 import AILoadingIndicator from '@/components/AILoadingIndicator';
 import EmptyState from '@/components/EmptyState';
+import { apiFetch } from '@/lib/apiClient';
 
 interface QuestionItem {
   id: string;
@@ -196,7 +197,7 @@ export default function MockInterviewPage() {
     setIsCleaning(true);
 
     try {
-      const res = await fetch('/api/ai/clean-speech', {
+      const res = await apiFetch('/api/ai/clean-speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -239,7 +240,7 @@ export default function MockInterviewPage() {
       if (!textForScoring) textForScoring = rawText;
 
       // Step 2: Call scoring engine
-      const res = await fetch('/api/ai/score-interview', {
+      const res = await apiFetch('/api/ai/score-interview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -311,7 +312,7 @@ export default function MockInterviewPage() {
     setIsGeneratingQuestions(true);
     setQuestionError(null);
     try {
-      const res = await fetch('/api/ai/generate-question', {
+      const res = await apiFetch('/api/ai/generate-question', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

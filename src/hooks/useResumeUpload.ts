@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { apiFetch } from '@/lib/apiClient';
 
 export function useResumeUpload() {
   const [isUploading, setIsUploading] = useState(false);
@@ -32,7 +33,7 @@ export function useResumeUpload() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const parseRes = await fetch('/api/resume/parse', {
+      const parseRes = await apiFetch('/api/resume/parse', {
         method: 'POST',
         body: formData,
       });

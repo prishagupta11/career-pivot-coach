@@ -10,6 +10,7 @@ import { useProfileExtraction, ExtractedProfileResult } from '@/hooks/useProfile
 import TagInput from '@/components/TagInput';
 import JobPostingInput from '@/components/JobPostingInput';
 import AILoadingIndicator from '@/components/AILoadingIndicator';
+import { apiFetch } from '@/lib/apiClient';
 import {
   Compass,
   ArrowRight,
@@ -277,7 +278,7 @@ export default function OnboardingPage() {
       // 2. Map Skill Gaps (if postings exist)
       if (postings.length > 0) {
         try {
-          const mapRes = await fetch('/api/ai/map-skill-gaps', {
+          const mapRes = await apiFetch('/api/ai/map-skill-gaps', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -304,7 +305,7 @@ export default function OnboardingPage() {
 
       // 3. Generate Learning Plan
       try {
-        const planRes = await fetch('/api/ai/generate-learning-plan', {
+        const planRes = await apiFetch('/api/ai/generate-learning-plan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

@@ -8,8 +8,17 @@ import { auth } from './firebase';
 export async function getAuthToken(): Promise<string | null> {
   if (typeof window !== 'undefined') {
     // Check if demo account session is active
-    if (localStorage.getItem('cpc_demo_auth_active') === 'true') {
-      return 'mock-jwt-token';
+    const demoVal = localStorage.getItem('cpc_demo_auth_active');
+    if (demoVal) {
+      if (demoVal === 'true') {
+        return 'mock-jwt-token:demo-pivot-candidate-2026:Alex Rivera';
+      }
+      try {
+        const parsed = JSON.parse(demoVal);
+        return `mock-jwt-token:${parsed.uid || 'demo-user'}:${parsed.displayName || 'Test User'}`;
+      } catch {
+        return 'mock-jwt-token:demo-pivot-candidate-2026:Alex Rivera';
+      }
     }
   }
 

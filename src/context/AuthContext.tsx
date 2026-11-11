@@ -16,7 +16,7 @@ interface AuthContextType {
   loading: boolean;
   isConfigured: boolean;
   signInWithGoogle: () => Promise<void>;
-  signInWithDemo: () => void;
+  signInWithDemo: (customUser?: { uid: string; displayName: string; email: string }) => void;
   signOut: () => Promise<void>;
 }
 
@@ -24,11 +24,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const DEMO_STORAGE_KEY = 'cpc_demo_auth_active';
 
-function createMockUser(): User {
+function createMockUser(customData?: { uid?: string; displayName?: string; email?: string }): User {
+  const uid = customData?.uid || 'demo-pivot-candidate-2026';
+  const displayName = customData?.displayName || 'Alex Rivera';
+  const email = customData?.email || 'alex.rivera@example.com';
   return {
-    uid: 'demo-pivot-candidate-2026',
-    displayName: 'Alex Rivera',
-    email: 'alex.rivera@example.com',
+    uid,
+    displayName,
+    email,
     photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=128&h=128&fit=crop&crop=faces',
     emailVerified: true,
     isAnonymous: false,
@@ -39,7 +42,7 @@ function createMockUser(): User {
     phoneNumber: null,
     providerId: 'google.com',
     delete: async () => {},
-    getIdToken: async () => 'mock-jwt-token',
+    getIdToken: async () => `mock-jwt-token:${uid}:${displayName}`,
     getIdTokenResult: async () => ({} as unknown as import('firebase/auth').IdTokenResult),
     reload: async () => {},
     toJSON: () => ({}),
@@ -47,8 +50,19 @@ function createMockUser(): User {
 }
 
 function getInitialDemoState(): { user: User | null; loading: boolean } {
-  if (typeof window !== 'undefined' && localStorage.getItem(DEMO_STORAGE_KEY) === 'true') {
-    return { user: createMockUser(), loading: false };
+  if (typeof window !== 'undefined') {
+    const raw = localStorage.getItem(DEMO_STORAGE_KEY);
+    if (raw) {
+      if (raw === 'true') {
+        return { user: createMockUser(), loading: false };
+      }
+      try {
+        const parsed = JSON.parse(raw);
+        return { user: createMockUser(parsed), loading: false };
+      } catch {
+        return { user: createMockUser(), loading: false };
+      }
+    }
   }
   return { user: null, loading: true };
 }
@@ -64,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (typeof window !== 'undefined' && localStorage.getItem(DEMO_STORAGE_KEY) === 'true') {
+      if (typeof window !== 'undefined' && Boolean(localStorage.getItem(DEMO_STORAGE_KEY))) {
         return;
       }
       setUser(currentUser);
@@ -97,11 +111,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signInWithDemo = () => {
+  const signInWithDemo = (customUser?: { uid: string; displayName: string; email: string }) => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem(DEMO_STORAGE_KEY, 'true');
+      if (customUser) {
+        localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(customUser));
+      } else {
+        localStorage.setItem(DEMO_STORAGE_KEY, 'true');
+      }
     }
-    setUser(createMockUser());
+    setUser(createMockUser(customUser));
     setLoading(false);
   };
 

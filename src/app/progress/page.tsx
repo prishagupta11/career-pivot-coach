@@ -18,6 +18,7 @@ import { useAppState, saveStoredState } from '@/lib/storage';
 import { AppState, LearningPlan, PlanChangeItem, PlanAdjustmentRecord } from '@/types';
 import AILoadingIndicator from '@/components/AILoadingIndicator';
 import EmptyState from '@/components/EmptyState';
+import { apiFetch } from '@/lib/apiClient';
 
 export default function ProgressPage() {
   const [state, setState] = useAppState();
@@ -135,7 +136,7 @@ export default function ProgressPage() {
     setAppliedSuccessMessage(null);
 
     try {
-      const res = await fetch('/api/ai/adjust-plan', {
+      const res = await apiFetch('/api/ai/adjust-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

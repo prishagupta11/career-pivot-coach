@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractText } from 'unpdf';
 import mammoth from 'mammoth';
+import { verifyAuth } from '@/lib/serverAuth';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 const ALLOWED_EXTENSIONS = ['pdf', 'docx', 'txt'];
 
 export async function POST(req: NextRequest) {
+  const authResult = await verifyAuth(req);
+  if ('response' in authResult) {
+    return authResult.response;
+  }
+
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File | null;

@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { cleanVoiceTranscript } from '@/lib/voice-cleanup';
+import { verifyAuth } from '@/lib/serverAuth';
 
 export async function POST(req: Request) {
+  const authResult = await verifyAuth(req);
+  if ('response' in authResult) {
+    return authResult.response;
+  }
+
   try {
     const body = await req.json();
     const rawSpeech = body.rawSpeech || body.rawTranscript || body.text;

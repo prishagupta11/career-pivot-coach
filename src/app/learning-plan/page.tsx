@@ -21,6 +21,7 @@ import { useAppState, saveStoredState } from '@/lib/storage';
 import { AppState, LearningPlan } from '@/types';
 import AILoadingIndicator from '@/components/AILoadingIndicator';
 import EmptyState from '@/components/EmptyState';
+import { apiFetch } from '@/lib/apiClient';
 
 export default function LearningPlanPage() {
   const [state, setState] = useAppState();
@@ -91,7 +92,7 @@ export default function LearningPlanPage() {
     setSavedSuccessBanner(false);
 
     try {
-      const res = await fetch('/api/ai/generate-learning-plan', {
+      const res = await apiFetch('/api/ai/generate-learning-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
