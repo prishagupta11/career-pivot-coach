@@ -99,7 +99,7 @@ export default function JobPostingInput({
                 required
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
-                placeholder="e.g. Acme HealthTech"
+                placeholder=""
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-white outline-hidden focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -112,7 +112,7 @@ export default function JobPostingInput({
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Junior Data Analyst"
+                placeholder=""
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-white outline-hidden focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -124,7 +124,7 @@ export default function JobPostingInput({
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g. Remote, Austin TX"
+                placeholder=""
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-white outline-hidden focus:ring-2 focus:ring-indigo-500"
               />
             </div>

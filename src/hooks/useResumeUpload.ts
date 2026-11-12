@@ -3,6 +3,8 @@
 import { useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/apiClient';
 
+const FRIENDLY_ERROR = "We couldn't read this file. Try a different PDF, DOCX or TXT.";
+
 export function useResumeUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -13,18 +15,16 @@ export function useResumeUpload() {
     // Validate size (max 5 MB)
     const MAX_SIZE = 5 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
-      const errorMsg = 'File size exceeds 5 MB limit. Please upload a smaller file.';
-      setUploadError(errorMsg);
-      throw new Error(errorMsg);
+      setUploadError(FRIENDLY_ERROR);
+      throw new Error(FRIENDLY_ERROR);
     }
 
     // Validate extension
     const extension = file.name.split('.').pop()?.toLowerCase();
     const allowed = ['pdf', 'docx', 'txt'];
     if (!extension || !allowed.includes(extension)) {
-      const errorMsg = `Unsupported format (.${extension || 'unknown'}). Please upload a PDF, DOCX, or TXT file.`;
-      setUploadError(errorMsg);
-      throw new Error(errorMsg);
+      setUploadError(FRIENDLY_ERROR);
+      throw new Error(FRIENDLY_ERROR);
     }
 
     setIsUploading(true);
@@ -40,19 +40,18 @@ export function useResumeUpload() {
 
       const parseData = await parseRes.json();
       if (!parseRes.ok) {
-        throw new Error(parseData.error || 'Failed to parse resume file.');
+        throw new Error(FRIENDLY_ERROR);
       }
 
       const extractedText = parseData.text;
       if (!extractedText || !extractedText.trim()) {
-        throw new Error('No readable text could be extracted from this document.');
+        throw new Error(FRIENDLY_ERROR);
       }
 
       return extractedText;
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to process resume';
-      setUploadError(message);
-      throw err;
+    } catch {
+      setUploadError(FRIENDLY_ERROR);
+      throw new Error(FRIENDLY_ERROR);
     } finally {
       setIsUploading(false);
     }

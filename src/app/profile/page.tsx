@@ -1,42 +1,33 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
-  Mic, 
-  MicOff, 
-  Sparkles, 
   ArrowRight, 
   CheckCircle2, 
   AlertCircle, 
   RefreshCw, 
-  Briefcase, 
-  Target, 
   Award, 
-  Plus, 
   Trash2, 
   Save, 
   Wrench, 
-  Layers, 
   BookOpen,
-  Sliders,
   Check,
-  UploadCloud
+  UploadCloud,
+  FileText
 } from 'lucide-react';
 import { getStoredState, saveStoredState } from '@/lib/storage';
-import { TransferableSkill, UserProfile, SkillCategory } from '@/types';
+import { UserProfile } from '@/types';
 import AILoadingIndicator from '@/components/AILoadingIndicator';
 import Link from 'next/link';
-import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useResumeUpload } from '@/hooks/useResumeUpload';
 import { useProfileExtraction } from '@/hooks/useProfileExtraction';
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile>(() => getStoredState().profile);
   const [knownSkillsInput, setKnownSkillsInput] = useState('');
-  const [cleanedIsStale, setCleanedIsStale] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'info' | 'success' | 'error' } | null>(null);
+  const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [savedSuccessBanner, setSavedSuccessBanner] = useState(false);
 
   // New tag inputs
@@ -45,16 +36,7 @@ export default function ProfilePage() {
   const [newAchievementText, setNewAchievementText] = useState('');
 
   // Reusable Hooks
-  const handleSpeechChunk = useCallback((chunk: string) => {
-    setProfile(prev => {
-      if (!prev) return prev;
-      const current = (prev.rawSpeech || '').trim();
-      return { ...prev, rawSpeech: current ? `${current} ${chunk}` : chunk };
-    });
-  }, []);
-
-  const { isRecording, speechSupported, toggleRecording } = useSpeechRecognition(handleSpeechChunk);
-  const { isUploading, uploadError, setUploadError, parseResumeFile } = useResumeUpload();
+  const { isUploading, uploadError, parseResumeFile } = useResumeUpload();
   const { isExtracting: isProcessing, extractProfile } = useProfileExtraction();
 
   useEffect(() => {
@@ -67,15 +49,15 @@ export default function ProfilePage() {
     };
   }, []);
 
-  // Run cleanup & extraction in one smooth flow
-  const handleRunCleanupAndExtraction = async (overrideRawText?: string, fromResume = false) => {
+  // Run cleanup & extraction silently in one clear step
+  const handleBuildProfile = async (overrideRawText?: string, fromResume = false, overrideFileName?: string) => {
     if (!profile) return;
-    const useCleaned = !cleanedIsStale && Boolean(profile.cleanedSpeech?.trim());
     const inputNarrative = overrideRawText !== undefined 
       ? overrideRawText 
-      : (useCleaned ? profile.cleanedSpeech.trim() : profile.rawSpeech?.trim());
+      : (profile.cleanedSpeech?.trim() || profile.rawSpeech?.trim());
+    
     if (!inputNarrative) {
-      setStatusMessage({ text: 'Please speak, paste your background narrative, or upload a resume first.', type: 'error' });
+      setStatusMessage({ text: 'Please upload a resume first.', type: 'error' });
       return;
     }
 
@@ -120,6 +102,7 @@ export default function ProfilePage() {
         ...profile,
         rawSpeech: rawTextToSave,
         cleanedSpeech: cleanedTextToSave,
+        resumeFileName: overrideFileName ?? profile.resumeFileName,
         currentRole: data.currentRole || profile.currentRole || '',
         targetRole: resolvedTargetRole,
         yearsExperience: typeof data.yearsExperience === 'number' ? data.yearsExperience : (Number(data.yearsExperience) || profile.yearsExperience),
@@ -136,70 +119,44 @@ export default function ProfilePage() {
       }
 
       setProfile(updated);
-      setCleanedIsStale(false);
 
-      // Auto-save initial extracted state
+      // Auto-save state
       const state = getStoredState();
       saveStoredState({ ...state, profile: updated });
-
-      if (fromResume) {
-        setStatusMessage({ 
-          text: 'Resume uploaded - review and edit the details below.', 
-          type: 'success' 
-        });
-      } else {
-        setStatusMessage({ 
-          text: 'Speech cleaned & tidy profile extracted! Review your extracted profile and translated skills below.', 
-          type: 'success' 
-        });
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to extract profile';
-      if (fromResume) {
-        setUploadError(`Failed to analyze resume details: ${msg}. You can edit the extracted text and try again.`);
-      } else {
-        setStatusMessage({ text: msg, type: 'error' });
-      }
+    } catch {
+      setStatusMessage({ text: 'Something went wrong. Please try again.', type: 'error' });
     }
   };
 
   const handleFileUpload = async (file: File) => {
-    // Check if user has already edited fields
-    const hasExistingContent = Boolean(
-      (profile?.rawSpeech && profile.rawSpeech.trim()) ||
-      (profile?.currentRole && profile.currentRole.trim()) ||
-      (profile?.yearsExperience && profile.yearsExperience > 0) ||
-      (profile?.skills && profile.skills.length > 0) ||
-      (profile?.tools && profile.tools.length > 0) ||
-      (profile?.achievements && profile.achievements.length > 0) ||
-      knownSkillsInput.trim()
-    );
-
-    if (hasExistingContent) {
-      const confirmOverwrite = window.confirm(
-        'You have existing profile information. Overwriting will replace your current edits with details from this resume. Do you want to proceed?'
-      );
-      if (!confirmOverwrite) {
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        return;
-      }
-    }
-
     setStatusMessage(null);
-
     try {
       const extractedText = await parseResumeFile(file);
       setProfile(prev => ({
         ...prev,
-        rawSpeech: extractedText
+        rawSpeech: extractedText,
+        resumeFileName: file.name
       }));
 
-      await handleRunCleanupAndExtraction(extractedText, true);
+      await handleBuildProfile(extractedText, true, file.name);
     } catch {
-      // Error is tracked in uploadError inside hook
+      // Friendly error already handled in useResumeUpload
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleRemoveResume = () => {
+    if (!profile) return;
+    const updated: UserProfile = {
+      ...profile,
+      rawSpeech: '',
+      cleanedSpeech: '',
+      resumeFileName: '',
+    };
+    setProfile(updated);
+    const state = getStoredState();
+    saveStoredState({ ...state, profile: updated });
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -225,7 +182,6 @@ export default function ProfilePage() {
     }
   };
 
-  // Save all edits to localStorage
   const handleSaveAll = () => {
     if (!profile) return;
     const updated = {
@@ -236,8 +192,7 @@ export default function ProfilePage() {
     const state = getStoredState();
     saveStoredState({ ...state, profile: updated });
     setSavedSuccessBanner(true);
-    setStatusMessage({ text: 'All profile changes, skills, and translations saved successfully!', type: 'success' });
-    setTimeout(() => setSavedSuccessBanner(false), 4000);
+    setTimeout(() => setSavedSuccessBanner(false), 3000);
   };
 
   // Add / remove tags
@@ -245,86 +200,80 @@ export default function ProfilePage() {
     if (!newSkillText.trim() || !profile) return;
     const current = profile.skills || [];
     if (!current.includes(newSkillText.trim())) {
-      setProfile({ ...profile, skills: [...current, newSkillText.trim()] });
+      const updated = { ...profile, skills: [...current, newSkillText.trim()] };
+      setProfile(updated);
+      const state = getStoredState();
+      saveStoredState({ ...state, profile: updated });
     }
     setNewSkillText('');
   };
 
   const removeSkill = (skillToRemove: string) => {
     if (!profile) return;
-    setProfile({
+    const updated = {
       ...profile,
       skills: (profile.skills || []).filter(s => s !== skillToRemove)
-    });
+    };
+    setProfile(updated);
+    const state = getStoredState();
+    saveStoredState({ ...state, profile: updated });
   };
 
   const addTool = () => {
     if (!newToolText.trim() || !profile) return;
     const current = profile.tools || [];
     if (!current.includes(newToolText.trim())) {
-      setProfile({ ...profile, tools: [...current, newToolText.trim()] });
+      const updated = { ...profile, tools: [...current, newToolText.trim()] };
+      setProfile(updated);
+      const state = getStoredState();
+      saveStoredState({ ...state, profile: updated });
     }
     setNewToolText('');
   };
 
   const removeTool = (toolToRemove: string) => {
     if (!profile) return;
-    setProfile({
+    const updated = {
       ...profile,
       tools: (profile.tools || []).filter(t => t !== toolToRemove)
-    });
+    };
+    setProfile(updated);
+    const state = getStoredState();
+    saveStoredState({ ...state, profile: updated });
   };
 
   const addAchievement = () => {
     if (!newAchievementText.trim() || !profile) return;
-    setProfile({
+    const updated = {
       ...profile,
       achievements: [...profile.achievements, newAchievementText.trim()]
-    });
+    };
+    setProfile(updated);
+    const state = getStoredState();
+    saveStoredState({ ...state, profile: updated });
     setNewAchievementText('');
   };
 
   const removeAchievement = (index: number) => {
     if (!profile) return;
-    setProfile({
+    const updated = {
       ...profile,
       achievements: profile.achievements.filter((_, i) => i !== index)
-    });
-  };
-
-  // Transferable skills editor
-  const updateTransferableSkill = (id: string, updates: Partial<TransferableSkill>) => {
-    if (!profile) return;
-    setProfile({
-      ...profile,
-      transferableSkills: profile.transferableSkills.map(skill => 
-        skill.id === id ? { ...skill, ...updates } : skill
-      )
-    });
+    };
+    setProfile(updated);
+    const state = getStoredState();
+    saveStoredState({ ...state, profile: updated });
   };
 
   const removeTransferableSkill = (id: string) => {
     if (!profile) return;
-    setProfile({
+    const updated = {
       ...profile,
       transferableSkills: profile.transferableSkills.filter(s => s.id !== id)
-    });
-  };
-
-  const addCustomTransferableSkill = () => {
-    if (!profile) return;
-    const newSkill: TransferableSkill = {
-      id: `ts-custom-${Date.now()}`,
-      originalSkill: 'Running scheduling system and coordination',
-      translatedSkill: 'Scheduling Logic & Structured Data Modeling',
-      category: 'Technical',
-      rationale: 'Demonstrates constraint management, relational data handling, and workflow optimization required in the new role.',
-      strengthLevel: 'Intermediate'
     };
-    setProfile({
-      ...profile,
-      transferableSkills: [...profile.transferableSkills, newSkill]
-    });
+    setProfile(updated);
+    const state = getStoredState();
+    saveStoredState({ ...state, profile: updated });
   };
 
   if (!profile) {
@@ -332,49 +281,96 @@ export default function ProfilePage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
           <RefreshCw className="animate-spin text-indigo-600" size={16} />
-          <span>Loading candidate profile...</span>
+          <span>Loading...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-16">
-      {/* Top Header Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-400 text-xs font-semibold mb-2">
-              <Sparkles size={14} className="shrink-0" />
-              <span>Step 1: Background & Skills Translator</span>
+    <div className="max-w-6xl mx-auto space-y-6 pb-16">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Profile</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Manage your background, target role, and skills.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={handleSaveAll}
+            type="button"
+            className="inline-flex items-center gap-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-xl transition-all cursor-pointer shadow-xs"
+          >
+            <Save size={14} className="shrink-0" />
+            <span>Save Profile</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Resume Upload Box */}
+      {isUploading ? (
+        <div className="p-8 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col items-center justify-center gap-3 text-center">
+          <RefreshCw size={24} className="animate-spin text-indigo-600 dark:text-indigo-400" />
+          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            Reading your resume...
+          </p>
+        </div>
+      ) : (profile.resumeFileName || profile.rawSpeech) ? (
+        <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={(e) => {
+              if (e.target.files && e.target.files[0]) {
+                handleFileUpload(e.target.files[0]);
+              }
+            }}
+            accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+            className="hidden"
+          />
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+              <FileText size={20} />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Candidate Background & Intake Engine
-            </h1>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
-              Talk freely about what you did in your past career, paste your resume, or upload a resume document. We clean messy verbal speech, extract your tidy profile, and translate old duties into skills that matter in your target field.
-            </p>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                {profile.resumeFileName || 'Resume uploaded'}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Resume loaded and ready
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
             <button
-              onClick={handleSaveAll}
               type="button"
-              className="inline-flex items-center gap-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-xl transition-all cursor-pointer shadow-xs"
+              disabled={isUploading}
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer transition-colors shadow-2xs disabled:opacity-50"
             >
-              <Save size={14} className="shrink-0" />
-              <span>Save Profile</span>
+              Replace
+            </button>
+            <button
+              type="button"
+              disabled={isUploading}
+              onClick={handleRemoveResume}
+              className="px-3.5 py-1.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/30 hover:bg-rose-100/60 text-xs font-semibold text-rose-700 dark:text-rose-300 cursor-pointer transition-colors disabled:opacity-50"
+            >
+              Remove
             </button>
           </div>
         </div>
-
-        {/* Resume Upload Control (Button + Drag-and-Drop) */}
+      ) : (
         <div 
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`mt-6 p-5 rounded-2xl border-2 border-dashed transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-between gap-4 ${
+          className={`p-6 rounded-2xl border-2 border-dashed transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-between gap-4 ${
             isDragging 
               ? 'border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/40 ring-4 ring-indigo-500/10' 
               : 'border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 bg-slate-50/50 dark:bg-slate-800/20'
@@ -396,301 +392,186 @@ export default function ProfilePage() {
             <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
               isDragging ? 'bg-indigo-600 text-white' : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
             }`}>
-              {isUploading ? <RefreshCw size={20} className="animate-spin" /> : <UploadCloud size={20} />}
+              <UploadCloud size={20} />
             </div>
             <div>
-              <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <span>{isUploading ? 'Extracting & analyzing resume...' : 'Upload your resume to prefill your profile'}</span>
-                <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
-                  Upload
-                </span>
+              <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                Upload your resume
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Drag and drop your file here, or click to browse. Supports PDF, DOCX, and TXT (up to 5 MB).
+                Drag and drop PDF, DOCX, or TXT (up to 5 MB).
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              disabled={isUploading}
-              onClick={(e) => {
-                e.stopPropagation();
-                fileInputRef.current?.click();
-              }}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 transition-colors shadow-2xs whitespace-nowrap cursor-pointer disabled:opacity-50"
-            >
-              {isUploading ? 'Processing...' : 'Choose Resume File'}
-            </button>
-          </div>
+          <button
+            type="button"
+            disabled={isUploading}
+            onClick={(e) => {
+              e.stopPropagation();
+              fileInputRef.current?.click();
+            }}
+            className="px-4 py-2 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 transition-colors shadow-2xs whitespace-nowrap cursor-pointer disabled:opacity-50"
+          >
+            Choose File
+          </button>
         </div>
-
-        {/* Inline Upload Error */}
-        {uploadError && (
-          <div className="mt-3 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs flex items-center gap-2.5">
-            <AlertCircle size={16} className="text-rose-600 shrink-0" />
-            <span className="font-medium">{uploadError}</span>
-          </div>
-        )}
-
-        {statusMessage && (
-          <div className={`mt-4 p-3.5 rounded-xl text-xs flex items-center gap-2.5 ${
-            statusMessage.type === 'success' 
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' 
-              : statusMessage.type === 'error'
-              ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
-              : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
-          }`}>
-            {statusMessage.type === 'success' ? (
-              <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-            ) : (
-              <AlertCircle size={16} className="shrink-0" />
-            )}
-            <span className="font-medium">{statusMessage.text}</span>
-          </div>
-        )}
-
-        {savedSuccessBanner && (
-          <div className="mt-3 p-3 rounded-xl bg-emerald-500 text-white text-xs font-semibold flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Check size={16} className="shrink-0" />
-              <span>Saved! All changes are synced to your browser workspace.</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* AI Processing Loading State */}
-      {(isProcessing || isUploading) && (
-        <AILoadingIndicator
-          title={isUploading ? "AI Resume Intake & Skills Translator Active" : "AI Profile Extraction & Skills Translator Active"}
-          stages={[
-            "Reading background narrative & extracting text layers...",
-            "Removing verbal filler words ('um', 'you know', 'basically') & resolving false starts...",
-            "Extracting core competencies, software tools, and quantified achievements...",
-            `Translating your past experience into the currency of ${profile.targetRole || 'your target field'}...`
-          ]}
-        />
       )}
 
-      {/* SECTION 1: Intake Information (Target Role, Current Background, What You Already Know, Voice / Resume Intake) */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Target size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
-              <span>1. Transition Goals & What You Already Know</span>
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Specify the role you want, your previous title, and any skills or tools you already know.
-            </p>
-          </div>
+      {/* Upload Error */}
+      {uploadError && (
+        <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs flex items-center gap-2.5">
+          <AlertCircle size={16} className="text-rose-600 shrink-0" />
+          <span className="font-medium">{uploadError}</span>
         </div>
+      )}
 
-        {/* 3-Column Inputs: Target Role, Current Role, Years of Experience */}
+      {statusMessage && (
+        <div className={`p-3.5 rounded-xl text-xs flex items-center gap-2.5 ${
+          statusMessage.type === 'success' 
+            ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' 
+            : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+        }`}>
+          {statusMessage.type === 'success' ? (
+            <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+          ) : (
+            <AlertCircle size={16} className="shrink-0" />
+          )}
+          <span className="font-medium">{statusMessage.text}</span>
+        </div>
+      )}
+
+      {savedSuccessBanner && (
+        <div className="p-3 rounded-xl bg-emerald-500 text-white text-xs font-semibold flex items-center gap-2">
+          <Check size={16} className="shrink-0" />
+          <span>Profile saved successfully.</span>
+        </div>
+      )}
+
+      {/* AI Loading State */}
+      {(isProcessing || isUploading) && (
+        <AILoadingIndicator />
+      )}
+
+      {/* Background & Narrative Input */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-xs space-y-5">
+        <h2 className="text-base font-bold text-slate-900 dark:text-white">
+          Background & Goals
+        </h2>
+
+        {/* 3-Column Inputs */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              The Role You Want (Target Role)
+              Target Role
             </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={profile.targetRole}
-                onChange={(e) => setProfile({ ...profile, targetRole: e.target.value })}
-                placeholder="e.g. Junior Data Analyst, Product Manager"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800/80 text-sm font-semibold text-indigo-900 dark:text-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-indigo-50/20 dark:bg-indigo-950/20"
-              />
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-              The exact job title you are targeting in this pivot.
-            </p>
+            <input
+              type="text"
+              value={profile.targetRole}
+              onChange={(e) => setProfile({ ...profile, targetRole: e.target.value })}
+              placeholder=""
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-slate-50/50 dark:bg-slate-800/40"
+            />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              Current / Past Role
+              Current / Most Recent Role
             </label>
             <input
               type="text"
               value={profile.currentRole}
               onChange={(e) => setProfile({ ...profile, currentRole: e.target.value })}
-              placeholder="e.g. High School Math Teacher, Accountant"
+              placeholder=""
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-slate-50/50 dark:bg-slate-800/40"
             />
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-              Your previous industry or primary professional identity.
-            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              Industry
+            </label>
+            <input
+              type="text"
+              value={profile.industry || ''}
+              onChange={(e) => setProfile({ ...profile, industry: e.target.value })}
+              placeholder=""
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-slate-50/50 dark:bg-slate-800/40"
+            />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
               Years of Experience
             </label>
-            <input
-              type="number"
-              min={0}
-              max={40}
-              value={profile.yearsExperience || 0}
-              onChange={(e) => setProfile({ ...profile, yearsExperience: parseInt(e.target.value) || 0 })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-slate-50/50 dark:bg-slate-800/40"
-            />
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-              Total cumulative professional experience.
-            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={profile.yearsExperience !== undefined && profile.yearsExperience !== null ? profile.yearsExperience : ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                    setProfile({ ...profile, yearsExperience: val === '' ? '' : (parseFloat(val) || val) });
+                  }
+                }}
+                placeholder=""
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-slate-50/50 dark:bg-slate-800/40 font-medium"
+              />
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 select-none shrink-0">
+                years
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Big Text Box: What they already know */}
+        {/* Known Skills */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-            What You Already Know (Existing Skills, Self-Study, Tools, or Certificates)
+            What You Already Know
           </label>
-          <textarea
-            rows={3}
+          <input
+            type="text"
             value={knownSkillsInput}
             onChange={(e) => setKnownSkillsInput(e.target.value)}
-            placeholder="Tell us what you already know: e.g. 'I know basic Python, Excel formulas, high school algebra, statistical testing, and I completed a SQL beginner course...'"
-            className="w-full p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-slate-50/40 dark:bg-slate-800/30 leading-relaxed"
+            placeholder=""
+            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-slate-50/50 dark:bg-slate-800/40"
           />
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            Our AI takes this into account to prevent generic recommendations and build your exact skill gap map.
-          </p>
         </div>
 
-        {/* Big Narrative Text Box with Voice Key & Resume Intake */}
-        <div className="pt-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                Spoken Background or Pasted Resume
-              </label>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Talk casually about your daily tasks, projects, numbers, or paste your existing resume.
-              </p>
-            </div>
-
-            {/* Voice Key Button */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={toggleRecording}
-                disabled={!speechSupported}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs ${
-                  isRecording
-                    ? 'bg-rose-600 text-white animate-pulse shadow-rose-200 dark:shadow-rose-900/40'
-                    : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100 dark:shadow-indigo-950/40'
-                }`}
-              >
-                {isRecording ? <MicOff size={16} className="shrink-0" /> : <Mic size={16} className="shrink-0" />}
-                <span>{isRecording ? 'Stop Voice Recording' : 'Voice Key: Press to Talk'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Prompt Required Hint Callout */}
-          <div className="mb-3 p-3 rounded-xl bg-indigo-50/90 dark:bg-indigo-950/50 border border-indigo-200/80 dark:border-indigo-800/70 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 text-xs font-medium">
-              <Sparkles size={16} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
-              <span>Hint: Press your voice key and just talk.</span>
-            </div>
-            <span className="text-[11px] text-indigo-600/80 dark:text-indigo-400/80 hidden sm:inline">
-              Speak naturally without worrying about fillers like &ldquo;um&rdquo; or &ldquo;like&rdquo;.
-            </span>
-          </div>
-
-          <textarea
-            rows={7}
-            value={profile.rawSpeech}
-            onChange={(e) => setProfile({ ...profile, rawSpeech: e.target.value })}
-            placeholder="Talk about what you did: 'So um, basically in my last job I was responsible for managing student grade data in Excel spreadsheets, resolving scheduling conflicts, and presenting quarterly performance to administrators...'"
-            className="w-full p-4 rounded-xl border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-slate-50/50 dark:bg-slate-800/40 font-mono text-xs leading-relaxed"
-          />
-
-          {/* Action Row */}
-          <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-            <span className="text-xs text-slate-500 dark:text-slate-400">
-              {profile.rawSpeech ? `${profile.rawSpeech.split(/\s+/).filter(Boolean).length} words recorded` : 'Awaiting speech or resume input'}
-            </span>
-
-            <div className="flex flex-wrap items-center gap-2.5">
-              <button
-                type="button"
-                onClick={() => handleRunCleanupAndExtraction()}
-                disabled={isProcessing || (!profile.rawSpeech?.trim() && !profile.cleanedSpeech?.trim())}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all cursor-pointer shadow-sm shadow-indigo-200 dark:shadow-indigo-950"
-              >
-                {isProcessing ? <RefreshCw size={14} className="animate-spin shrink-0" /> : <Layers size={14} className="shrink-0" />}
-                <span>{isProcessing ? 'Cleaning & Extracting Tidy Profile...' : 'Run Cleanup & Extract Profile'}</span>
-              </button>
-            </div>
-          </div>
+        {/* One clear AI button: "Build my profile" */}
+        <div className="flex justify-end pt-2">
+          <button
+            type="button"
+            onClick={() => handleBuildProfile()}
+            disabled={isProcessing || !profile.rawSpeech?.trim()}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all cursor-pointer shadow-xs"
+          >
+            {isProcessing && <RefreshCw size={14} className="animate-spin shrink-0" />}
+            <span>Build my profile</span>
+          </button>
         </div>
       </div>
 
-      {/* SECTION 2: Tidy Profile Extraction (Current Role, Years Experience, Skills, Tools, Achievements, Target Role) */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Briefcase size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
-              <span>2. Extracted Tidy Profile</span>
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Structured summary of role, experience, demonstrated skills, tools, and quantifiable achievements.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleSaveAll}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
-          >
-            <Save size={13} className="shrink-0" />
-            <span>Save Tidy Profile</span>
-          </button>
-        </div>
+      {/* Skills & Tools */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
+        <h2 className="text-base font-bold text-slate-900 dark:text-white">
+          Skills & Tools
+        </h2>
 
-        {/* Top metrics badges */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Current Role</span>
-            <div className="text-sm font-bold text-slate-900 dark:text-white mt-1">
-              {profile.currentRole || 'Not specified'}
-            </div>
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Plain Skills */}
+          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mb-3">
+              <BookOpen size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span>Skills ({(profile.skills || []).length})</span>
+            </span>
 
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Years of Experience</span>
-            <div className="text-sm font-bold text-slate-900 dark:text-white mt-1">
-              {profile.yearsExperience || 0} Years
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl border border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/30 dark:bg-indigo-950/20">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Target Pivot Role</span>
-            <div className="text-sm font-bold text-indigo-900 dark:text-indigo-200 mt-1">
-              {profile.targetRole || 'Not specified'}
-            </div>
-          </div>
-        </div>
-
-        {/* Skills & Tools Grids */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
-          {/* Skills Pill Box */}
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <BookOpen size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <span>Extracted Demonstrated Skills ({(profile.skills || []).length})</span>
-              </span>
-            </div>
-
-            <div className="flex flex-wrap gap-2 mb-3 min-h-[48px]">
+            <div className="flex flex-wrap gap-2 mb-3 min-h-[40px]">
               {(profile.skills || []).map((skill, idx) => (
                 <span
                   key={idx}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs"
                 >
                   <span>{skill}</span>
                   <button
@@ -703,96 +584,92 @@ export default function ProfilePage() {
                 </span>
               ))}
               {(!profile.skills || profile.skills.length === 0) && (
-                <span className="text-xs text-slate-400 italic">No skills extracted yet. Run cleanup to generate.</span>
+                <span className="text-xs text-slate-400 italic">No skills added yet.</span>
               )}
             </div>
 
-            <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-700/60">
               <input
                 type="text"
                 value={newSkillText}
                 onChange={(e) => setNewSkillText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
-                placeholder="Add custom skill..."
-                className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                placeholder="Add skill..."
+                className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
               <button
                 type="button"
                 onClick={addSkill}
-                className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors"
+                className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold hover:bg-indigo-100 transition-colors cursor-pointer"
               >
-                Add Skill
+                Add
               </button>
             </div>
           </div>
 
-          {/* Tools & Software Pill Box */}
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Wrench size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <span>Tools & Software Used ({(profile.tools || []).length})</span>
-              </span>
-            </div>
+          {/* Tools */}
+          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mb-3">
+              <Wrench size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span>Tools & Software ({(profile.tools || []).length})</span>
+            </span>
 
-            <div className="flex flex-wrap gap-2 mb-3 min-h-[48px]">
+            <div className="flex flex-wrap gap-2 mb-3 min-h-[40px]">
               {(profile.tools || []).map((tool, idx) => (
                 <span
                   key={idx}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium bg-indigo-50 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-300 px-3 py-1 rounded-lg border border-indigo-200/80 dark:border-indigo-800"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs"
                 >
                   <span>{tool}</span>
                   <button
                     type="button"
                     onClick={() => removeTool(tool)}
-                    className="text-indigo-400 hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
+                    className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
                   >
                     <Trash2 size={12} className="shrink-0" />
                   </button>
                 </span>
               ))}
               {(!profile.tools || profile.tools.length === 0) && (
-                <span className="text-xs text-slate-400 italic">No tools extracted yet. Run cleanup to generate.</span>
+                <span className="text-xs text-slate-400 italic">No tools added yet.</span>
               )}
             </div>
 
-            <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-700/60">
               <input
                 type="text"
                 value={newToolText}
                 onChange={(e) => setNewToolText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTool())}
-                placeholder="Add tool (e.g. Tableau, Excel, SQL)..."
-                className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                placeholder="Add tool..."
+                className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
               <button
                 type="button"
                 onClick={addTool}
-                className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors"
+                className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold hover:bg-indigo-100 transition-colors cursor-pointer"
               >
-                Add Tool
+                Add
               </button>
             </div>
           </div>
         </div>
 
-        {/* Quantifiable Achievements */}
-        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <Award size={14} className="text-amber-500 shrink-0" />
-              <span>Quantifiable Accomplishments & Wins ({profile.achievements.length})</span>
-            </span>
-          </div>
+        {/* Quantifiable Accomplishments */}
+        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 space-y-3">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+            <Award size={14} className="text-amber-500 shrink-0" />
+            <span>Accomplishments ({profile.achievements.length})</span>
+          </span>
 
           <div className="space-y-2">
             {profile.achievements.map((ach, idx) => (
               <div
                 key={idx}
-                className="p-3 rounded-xl bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 flex items-start justify-between gap-3"
+                className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-start justify-between gap-3"
               >
                 <div className="flex items-start gap-2.5">
-                  <CheckCircle2 size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                   <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
                     {ach}
                   </p>
@@ -801,7 +678,6 @@ export default function ProfilePage() {
                   type="button"
                   onClick={() => removeAchievement(idx)}
                   className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1 cursor-pointer shrink-0"
-                  title="Remove achievement"
                 >
                   <Trash2 size={13} className="shrink-0" />
                 </button>
@@ -809,195 +685,88 @@ export default function ProfilePage() {
             ))}
 
             {profile.achievements.length === 0 && (
-              <p className="text-xs text-slate-400 italic">No achievements extracted yet. Run cleanup to generate.</p>
+              <p className="text-xs text-slate-400 italic">No accomplishments added yet.</p>
             )}
           </div>
 
-          <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-700/60">
             <input
               type="text"
               value={newAchievementText}
               onChange={(e) => setNewAchievementText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addAchievement())}
-              placeholder="Add quantifiable win (e.g. 'Boosted student pass rates by 18% using custom Excel tracker')..."
-              className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              placeholder="Add accomplishment..."
+              className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
             <button
               type="button"
               onClick={addAchievement}
-              className="px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-semibold hover:bg-amber-100 transition-colors"
+              className="px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-semibold hover:bg-amber-100 transition-colors cursor-pointer"
             >
-              Add Achievement
+              Add
             </button>
           </div>
         </div>
       </div>
 
-      {/* SECTION 3: Skills Translator (Mapping old experience to skills that matter in target role) */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-xs font-semibold mb-1">
-              <Sliders size={13} className="shrink-0" />
-              <span>Domain Translation Engine</span>
-            </div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              Skills Translator: Old Experience → Target Role Currency
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-              We map portions of your old experience directly to skills hiring managers look for.
-              For example, <span className="font-semibold text-slate-700 dark:text-slate-300">running a school timetable system</span> becomes <span className="font-semibold text-indigo-600 dark:text-indigo-400">scheduling logic and working with structured data</span>.
-            </p>
-          </div>
+      {/* Translated Skills (Read-Only with short reason in small text) */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <h2 className="text-base font-bold text-slate-900 dark:text-white">
+          Translated Skills
+        </h2>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={addCustomTransferableSkill}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
-            >
-              <Plus size={14} className="shrink-0" />
-              <span>Add Custom Translation</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Translation Cards List */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {profile.transferableSkills.map((skill) => (
             <div 
               key={skill.id}
-              className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors bg-white dark:bg-slate-900/80 shadow-xs space-y-4"
+              className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 flex items-start justify-between gap-4"
             >
-              {/* Category, Strength Level & Delete */}
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <select
-                    value={skill.category}
-                    onChange={(e) => updateTransferableSkill(skill.id, { category: e.target.value as SkillCategory })}
-                    className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 focus:outline-none"
-                  >
-                    <option value="Technical">Technical</option>
-                    <option value="Domain">Domain</option>
-                    <option value="Soft Skill">Soft Skill</option>
-                    <option value="Tool">Tool</option>
-                  </select>
-
-                  <select
-                    value={skill.strengthLevel}
-                    onChange={(e) => updateTransferableSkill(skill.id, { strengthLevel: e.target.value as 'Foundational' | 'Intermediate' | 'Advanced' })}
-                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-md border focus:outline-none ${
-                      skill.strengthLevel === 'Advanced'
-                        ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                        : skill.strengthLevel === 'Intermediate'
-                        ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
-                        : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                    }`}
-                  >
-                    <option value="Foundational">Foundational</option>
-                    <option value="Intermediate">Intermediate</option>
-                    <option value="Advanced">Advanced</option>
-                  </select>
+              <div className="space-y-1 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                    {skill.originalSkill}
+                  </span>
+                  <ArrowRight size={13} className="text-slate-400 shrink-0" />
+                  <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-400">
+                    {skill.translatedSkill}
+                  </span>
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                    {skill.category}
+                  </span>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => removeTransferableSkill(skill.id)}
-                  className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1 cursor-pointer transition-colors"
-                  title="Remove translated skill"
-                >
-                  <Trash2 size={14} className="shrink-0" />
-                </button>
+                {skill.rationale && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed pt-0.5">
+                    {skill.rationale}
+                  </p>
+                )}
               </div>
 
-              {/* 3-Section Grid: Original Thing They Did -> Translated Skill -> Why It Counts */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* 1. Original thing they did */}
-                <div className="space-y-1.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    1. Original Thing You Did
-                  </span>
-                  <textarea
-                    rows={3}
-                    value={skill.originalSkill}
-                    onChange={(e) => updateTransferableSkill(skill.id, { originalSkill: e.target.value })}
-                    placeholder="What you did in your past role..."
-                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 text-xs text-slate-800 dark:text-slate-200 leading-relaxed focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-
-                {/* 2. Translated skills */}
-                <div className="space-y-1.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center gap-1">
-                    <ArrowRight size={12} className="shrink-0" />
-                    <span>2. Translated Skill (Target Currency)</span>
-                  </span>
-                  <textarea
-                    rows={3}
-                    value={skill.translatedSkill}
-                    onChange={(e) => updateTransferableSkill(skill.id, { translatedSkill: e.target.value })}
-                    placeholder="How hiring managers describe this competency..."
-                    className="w-full p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/20 dark:bg-indigo-950/20 text-xs font-semibold text-indigo-900 dark:text-indigo-200 leading-relaxed focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-
-                {/* 3. Why it counts */}
-                <div className="space-y-1.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    3. Why It Counts (Hiring Rationale)
-                  </span>
-                  <textarea
-                    rows={3}
-                    value={skill.rationale}
-                    onChange={(e) => updateTransferableSkill(skill.id, { rationale: e.target.value })}
-                    placeholder="Why this matters in the new field..."
-                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-600 dark:text-slate-300 leading-relaxed focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() => removeTransferableSkill(skill.id)}
+                className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1 cursor-pointer shrink-0"
+                title="Remove"
+              >
+                <Trash2 size={13} className="shrink-0" />
+              </button>
             </div>
           ))}
 
           {profile.transferableSkills.length === 0 && (
-            <div className="p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-800">
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                No translated skills yet. Enter your background narrative above and click &ldquo;Run Cleanup & Extract Profile&rdquo; to translate your experience into {profile.targetRole || 'your target role'} skills.
-              </p>
-            </div>
+            <p className="text-xs text-slate-400 italic">No translated skills yet. Click &ldquo;Build my profile&rdquo; to generate.</p>
           )}
         </div>
       </div>
 
-      {/* SECTION 4: Save All & Bottom Actions */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>Ready to Save Your Profile & Translations?</span>
-          </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Saving updates your browser workspace and powers your Skill Gap Map, Learning Plan, and Mock Interviews.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleSaveAll}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition-all cursor-pointer shadow-xs active:scale-[0.99]"
-          >
-            <Save size={15} className="shrink-0" />
-            <span>Save Profile</span>
-          </button>
-
-          <Link
-            href="/skill-gaps"
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all cursor-pointer shadow-md shadow-indigo-100 dark:shadow-indigo-950 shrink-0"
-          >
-            <span>Proceed to Step 2: Skill Gap Map</span>
-            <ArrowRight size={15} className="shrink-0" />
-          </Link>
-        </div>
+      {/* Bottom Action */}
+      <div className="flex justify-end pt-2">
+        <Link
+          href="/skill-gaps"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-all cursor-pointer shadow-xs"
+        >
+          <span>Continue to Skill Gaps</span>
+          <ArrowRight size={14} className="shrink-0" />
+        </Link>
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ import {
   declineLegacyImport,
   useAppState,
 } from '@/lib/storage';
-import { Download, Sparkles } from 'lucide-react';
+import { Download } from 'lucide-react';
 
 function AppShellContent({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
@@ -90,28 +90,28 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
 
   // While Firebase is checking auth state, show loading screen so nothing flashes
   if (authLoading) {
-    return <LoadingScreen message="Checking authentication..." />;
+    return <LoadingScreen message="Loading..." />;
   }
 
   // If unauthenticated and on a protected route, show loading screen while redirecting
   if (!user && !isLoginPage) {
-    return <LoadingScreen message="Redirecting to sign in..." />;
+    return <LoadingScreen message="Loading..." />;
   }
 
   // If authenticated and on login page, show loading screen while redirecting to dashboard
   if (user && isLoginPage) {
-    return <LoadingScreen message="Redirecting to dashboard..." />;
+    return <LoadingScreen message="Loading..." />;
   }
 
   // Don't render the app pages until the first load from Firestore has finished
   const isWaitingForFirestore = Boolean(user && syncedUserId !== user.uid && !isLoginPage);
   if (isWaitingForFirestore) {
-    return <LoadingScreen message="Loading your career pivot data from cloud..." />;
+    return <LoadingScreen message="Loading..." />;
   }
 
   // If not onboarded and trying to view other pages, show loading screen while redirecting
   if (user && !appState.onboarding?.completed && !isOnboardingPage && !isLoginPage) {
-    return <LoadingScreen message="Redirecting to onboarding wizard..." />;
+    return <LoadingScreen message="Loading..." />;
   }
 
   return (
@@ -123,9 +123,9 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
       {!hideChrome && (
         <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-6 text-center text-xs text-slate-500 dark:text-slate-400">
           <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <span>Career Pivot Coach &copy; 2026 — Evidence-Based Career Reskilling</span>
+            <span>Career Pivot Coach &copy; 2026</span>
             <span className="text-slate-400 dark:text-slate-500">
-              Speech Cleanup • Skill Translation • Real JD Gap Maps • Rubric Interviews
+              Skill Translation • Gap Maps • Interview Practice
             </span>
           </div>
         </footer>
@@ -150,7 +150,7 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300">
-              💡 If imported, your profile, skill gap maps, and learning plans will be synced to your Firestore account and accessible anywhere.
+              Your saved progress will be linked to your account.
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
@@ -162,7 +162,6 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
                 }}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
               >
-                <Sparkles className="w-4 h-4 shrink-0" />
                 <span>Import data from this browser</span>
               </button>
               <button
@@ -185,7 +184,7 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense fallback={<LoadingScreen message="Loading Career Pivot Coach..." />}>
+    <Suspense fallback={<LoadingScreen message="Loading..." />}>
       <AppShellContent>{children}</AppShellContent>
     </Suspense>
   );

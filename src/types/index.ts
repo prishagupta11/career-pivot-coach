@@ -22,7 +22,8 @@ export interface UserProfile {
   fullName: string;
   currentRole: string;
   targetRole: string;
-  yearsExperience: number;
+  industry?: string;
+  yearsExperience: number | string;
   rawSpeech: string;
   cleanedSpeech: string;
   skills: string[];
@@ -32,6 +33,7 @@ export interface UserProfile {
   transferableSkills: TransferableSkill[];
   lastUpdated: string;
   preferences?: UserPreferences;
+  resumeFileName?: string;
 }
 
 export interface JobPosting {

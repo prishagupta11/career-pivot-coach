@@ -28,6 +28,7 @@ export const INITIAL_EMPTY_STATE: AppState = {
   profile: {
     fullName: '',
     currentRole: '',
+    industry: '',
     targetRole: '',
     yearsExperience: 0,
     rawSpeech: '',
@@ -39,6 +40,7 @@ export const INITIAL_EMPTY_STATE: AppState = {
     transferableSkills: [],
     lastUpdated: '',
     preferences: DEFAULT_PREFERENCES,
+    resumeFileName: '',
   },
   onboarding: DEFAULT_ONBOARDING,
   jobPostings: [],

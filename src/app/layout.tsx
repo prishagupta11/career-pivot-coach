@@ -4,8 +4,8 @@ import { AuthProvider } from "@/context/AuthContext";
 import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
-  title: "Career Pivot Coach — Targeted Re-skilling & Transition Engine",
-  description: "Empirical career transition coach translating existing experience, analyzing real job descriptions, and building focused learning & portfolio plans.",
+  title: "Career Pivot Coach",
+  description: "Practical career transition coach translating existing experience, analyzing real job descriptions, and building focused learning & portfolio plans.",
 };
 
 export default function RootLayout({

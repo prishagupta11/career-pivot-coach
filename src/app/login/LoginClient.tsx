@@ -10,7 +10,6 @@ import {
   Award, 
   Loader2, 
   AlertCircle, 
-  Sparkles,
   ArrowRight,
   ShieldCheck,
   UserCheck,
@@ -40,32 +39,8 @@ export default function LoginClient() {
 
     try {
       await signInWithGoogle();
-    } catch (error: unknown) {
-      const authError = error as { code?: string; message?: string };
-      const code = authError?.code || '';
-
-      if (code === 'auth/not-configured' || code === 'auth/invalid-api-key' || code === 'auth/api-key-not-valid' || code === 'auth/configuration-not-found') {
-        setErrorMessage(
-          'Firebase credentials are not configured in .env.local. To use live Google sign-in, copy .env.local.example to .env.local with your Firebase project keys, or use "Continue with Demo Account" below.'
-        );
-      } else if (code === 'auth/popup-closed-by-user') {
-        setErrorMessage('The Google sign-in window was closed before completing. Please try again.');
-      } else if (code === 'auth/popup-blocked') {
-        setErrorMessage('The sign-in popup was blocked by your browser. We are redirecting you to complete sign in...');
-      } else if (code === 'auth/network-request-failed') {
-        setErrorMessage('A network connection error occurred. Please check your internet connection and try again.');
-      } else if (code === 'auth/unauthorized-domain') {
-        setErrorMessage('This domain is not authorized in your Firebase console. Please add this domain to Authorized Domains in Firebase Authentication settings.');
-      } else if (code === 'auth/operation-not-allowed') {
-        setErrorMessage('Google sign-in is not enabled in your Firebase console. Please enable the Google provider in Firebase Authentication.');
-      } else {
-        const detail = code ? ` (${code})` : '';
-        setErrorMessage(
-          authError?.message && !authError.message.includes('Firebase:')
-            ? `${authError.message}${detail}`
-            : `Unable to complete sign-in with Google${detail}. Please try again.`
-        );
-      }
+    } catch {
+      setErrorMessage('Something went wrong. Please try again.');
     } finally {
       setSigningIn(false);
     }
@@ -76,19 +51,19 @@ export default function LoginClient() {
       icon: Mic,
       title: 'Speak your experience and we translate it',
       description:
-        'Speak freely about your daily work and past responsibilities. The engine strips verbal hesitations and translates past duties into target-domain language with transferable competency rationales.',
+        'Speak freely about your daily work and past responsibilities. We translate past duties into target-domain language with transferable competency rationales.',
     },
     {
       icon: Target,
       title: 'Real job posting gap map',
       description:
-        'Rather than guessing what employers want, input real job postings from your target market. The engine aggregates skill mentions to distinguish Critical Gaps (found in 70%+ of postings) from Nice-to-Haves.',
+        'Rather than guessing what employers want, input real job postings from your target market to distinguish Critical Gaps from Nice-to-Haves.',
     },
     {
       icon: Award,
       title: 'Scored voice mock interviews',
       description:
-        'Practice speaking your new domain’s vocabulary aloud. Answers are scored against a transparent 4-factor hiring rubric with calibrated rewrites to build grounded domain fluency.',
+        'Practice speaking your new domain’s vocabulary aloud. Answers are scored with targeted feedback and sample rewrites to build domain fluency.',
     },
   ];
 
@@ -101,11 +76,6 @@ export default function LoginClient() {
           
           {/* Logo & Headline */}
           <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800 text-xs font-semibold tracking-wide shadow-2xs">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span>Evidence-Based Career Reskilling</span>
-            </div>
-
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md">
                 <Compass className="w-6 h-6 text-white" />
@@ -116,7 +86,7 @@ export default function LoginClient() {
             </div>
 
             <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed max-w-xl">
-              Generic career advice consistently fails non-linear career switchers. Career Pivot Coach replaces vague motivation with an empirical transition engine calibrated for high-stakes career pivots into tech and analytics.
+              Practical tools for career switchers pivoting into tech and analytics.
             </p>
           </div>
 
@@ -148,7 +118,7 @@ export default function LoginClient() {
 
           {/* Target Audience Highlight */}
           <div className="pt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-semibold text-slate-700 dark:text-slate-300">Calibrated for:</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">Pivots:</span>
             <span className="px-2.5 py-1 rounded-md bg-slate-200/60 dark:bg-slate-800 border border-slate-300/40 dark:border-slate-700/60">
               Educators → Data / Analytics
             </span>
@@ -166,30 +136,30 @@ export default function LoginClient() {
         <div className="lg:col-span-5 flex justify-center">
           <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
             
-            <div className="space-y-2 text-center sm:text-left">
+            <div className="space-y-1 text-center sm:text-left">
               <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-                Sign in to your account
+                Sign in
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                Continue with your Google account to access your profile translation, skill gap maps, and interview practice.
+                Continue with your Google account.
               </p>
             </div>
 
-            {/* Missing config setup callout */}
-            {!isConfigured && (
+            {/* Development-only: Missing config setup callout */}
+            {process.env.NODE_ENV !== 'production' && !isConfigured && (
               <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2.5">
                 <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <p className="font-semibold">Setup Tip: Firebase Keys Not Detected</p>
                   <p className="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
-                    To enable live Google login, copy <code className="bg-amber-100 dark:bg-amber-900/50 px-1 py-0.5 rounded font-mono text-[10px]">.env.local.example</code> to <code className="bg-amber-100 dark:bg-amber-900/50 px-1 py-0.5 rounded font-mono text-[10px]">.env.local</code> and fill in your Firebase project credentials. Or click the demo button below to test the app right now.
+                    To enable live Google login, copy <code className="bg-amber-100 dark:bg-amber-900/50 px-1 py-0.5 rounded font-mono text-[10px]">.env.local.example</code> to <code className="bg-amber-100 dark:bg-amber-900/50 px-1 py-0.5 rounded font-mono text-[10px]">.env.local</code>. Or click the demo button below.
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Error Message Banner */}
-            {errorMessage && (
+            {/* Development-only: Error Message Banner */}
+            {process.env.NODE_ENV !== 'production' && errorMessage && (
               <div 
                 role="alert" 
                 className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-200 text-xs flex items-start gap-3 animate-in fade-in duration-150"
@@ -217,7 +187,6 @@ export default function LoginClient() {
                   </>
                 ) : (
                   <>
-                    {/* Inline Google SVG with explicit width and height */}
                     <svg
                       width="20"
                       height="20"
@@ -267,7 +236,7 @@ export default function LoginClient() {
             {/* Subtle Divider & Note */}
             <div className="border-t border-slate-200 dark:border-slate-800 pt-4 text-center">
               <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed">
-                By continuing, your progress, resume breakdowns, and mock interview transcripts will be securely saved to your account.
+                By continuing, your progress and interview practice will be securely saved to your account.
               </p>
             </div>
 

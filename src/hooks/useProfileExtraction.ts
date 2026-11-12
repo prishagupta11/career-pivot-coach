@@ -7,7 +7,7 @@ import { apiFetch } from '@/lib/apiClient';
 export interface ExtractedProfileResult {
   currentRole?: string;
   targetRole?: string;
-  yearsExperience?: number;
+  yearsExperience?: number | string;
   skills?: string[];
   tools?: string[];
   responsibilities?: string[];
@@ -25,7 +25,7 @@ export function useProfileExtraction() {
       narrativeText: string;
       currentRole?: string;
       targetRole?: string;
-      yearsExperience?: number;
+      yearsExperience?: number | string;
       knownSkills?: string;
       isFromResume?: boolean;
     }): Promise<ExtractedProfileResult> => {

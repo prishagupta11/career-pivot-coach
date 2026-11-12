@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { 
   ArrowRight, 
-  Sparkles, 
   Briefcase, 
   CalendarDays, 
   Send, 
@@ -23,7 +22,7 @@ export default function DashboardPage() {
   if (!state) {
     return (
       <div className="p-12 text-center text-slate-500 dark:text-slate-400">
-        Loading Career Pivot Coach...
+        Loading...
       </div>
     );
   }
@@ -36,17 +35,15 @@ export default function DashboardPage() {
 
   const criticalGaps = (skillGapMap?.skills || []).filter(s => s?.gapSeverity === 'Critical');
   const matchedSkills = (skillGapMap?.skills || []).filter(s => s?.candidateHas);
-  const recentInterviewScore = interviews[0]?.rubric?.totalScore || interviews[0]?.scores?.totalScore || 0;
-  const maxInterviewScore = interviews[0]?.rubric?.maxScore || (interviews[0]?.scores ? 20 : 25);
 
   const candidateName = profile.fullName?.trim() || user?.displayName || 'Candidate';
   const currentRoleDisplay = profile.currentRole?.trim() || (profile.targetRole ? 'Transitioning Professional' : 'Candidate');
 
-  // Calculate Next Best Action
+  // Next best action
   let nextAction = {
     title: 'Add Target Job Descriptions to Unlock Skill Gap Map',
-    description: 'You skipped adding job postings during setup. Paste at least 3 job descriptions to map your transferable experience against real employer demand.',
-    badge: 'Priority 1 • Market Demand',
+    description: 'Add at least 3 job descriptions to map your experience against role requirements.',
+    badge: 'Priority 1',
     ctaText: 'Add Job Descriptions',
     ctaHref: '/skill-gaps',
     icon: Target,
@@ -55,8 +52,8 @@ export default function DashboardPage() {
   if (jobPostings.length === 0) {
     nextAction = {
       title: 'Add Target Job Descriptions to Unlock Skill Gap Map',
-      description: 'You skipped adding job postings during setup. Paste at least 3 job descriptions to map your transferable experience against real employer demand.',
-      badge: 'Priority 1 • Market Demand',
+      description: 'Add at least 3 job descriptions to map your experience against role requirements.',
+      badge: 'Priority 1',
       ctaText: 'Add Job Descriptions',
       ctaHref: '/skill-gaps',
       icon: Target,
@@ -64,8 +61,8 @@ export default function DashboardPage() {
   } else if (!learningPlan?.weeks || learningPlan.weeks.length === 0) {
     nextAction = {
       title: 'Generate Your Custom Learning Curriculum',
-      description: 'Your skill gaps have been identified. Generate a week-by-week curriculum and portfolio project blueprint tailored to your weekly hours.',
-      badge: 'Priority 2 • Action Plan',
+      description: 'Your skill gaps have been identified. Generate a week-by-week curriculum tailored to your schedule.',
+      badge: 'Priority 2',
       ctaText: 'Generate Learning Plan',
       ctaHref: '/learning-plan',
       icon: CalendarDays,
@@ -73,17 +70,17 @@ export default function DashboardPage() {
   } else if (!interviews || interviews.length === 0) {
     nextAction = {
       title: 'Practice Your First Voice Mock Interview',
-      description: 'Test your ability to articulate your transferable experience in the lexicon of your target role. Get scored against an objective 4-factor hiring rubric.',
-      badge: 'Priority 3 • Domain Fluency',
+      description: 'Test your ability to articulate your experience for your target role and get structured feedback.',
+      badge: 'Priority 3',
       ctaText: 'Start Voice Interview',
       ctaHref: '/mock-interview',
       icon: AudioWaveform,
     };
   } else {
     nextAction = {
-      title: 'Track Your Active Applications & Callback Rates',
-      description: 'Log your applications to correlate callback rates with your skill match percentages and learn which roles generate the highest employer interest.',
-      badge: 'Outcome Tracking',
+      title: 'Track Your Active Applications',
+      description: 'Log your applications to keep track of interview invitations and follow-ups.',
+      badge: 'Applications',
       ctaText: 'Open Application Tracker',
       ctaHref: '/applications',
       icon: Send,
@@ -102,11 +99,10 @@ export default function DashboardPage() {
       >
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
           
-          {/* Left Side: Candidate & Career Pathway */}
           <div className="lg:col-span-8 space-y-3">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span>Active Transition Engine</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+              <span>Active Career Pivot</span>
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
@@ -141,7 +137,7 @@ export default function DashboardPage() {
                 {jobPostings.length === 0 ? 'Pending' : `${skillGapMap.overallMatchPercentage || 0}%`}
               </div>
               <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
-                {jobPostings.length === 0 ? 'Postings Needed' : 'Market Match'}
+                {jobPostings.length === 0 ? 'Postings Needed' : 'Match Rate'}
               </div>
             </div>
 
@@ -154,7 +150,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center justify-end gap-1.5 font-medium text-rose-700 dark:text-rose-400">
                 <span>▲</span>
-                <span><strong className="text-slate-900 dark:text-white">{criticalGaps.length}</strong> Critical Gaps</span>
+                <span><strong className="text-slate-900 dark:text-white">{criticalGaps.length}</strong> Gaps</span>
               </div>
             </div>
           </div>
@@ -193,9 +189,9 @@ export default function DashboardPage() {
         </Link>
       </section>
 
-      {/* 2. 4-PILLAR STATUS METRIC CARDS */}
+      {/* 3. 4 STATUS METRIC CARDS */}
       <section 
-        aria-label="Key Transition Metrics"
+        aria-label="Key Metrics"
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch"
       >
         {/* Card 1: Background */}
@@ -205,15 +201,12 @@ export default function DashboardPage() {
               <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                 Background
               </span>
-              <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                <Sparkles size={16} className="w-3.5 h-3.5 shrink-0" />
-              </div>
             </div>
             <div className="text-2xl font-bold text-slate-900 dark:text-white mt-3">
               {(profile?.transferableSkills || []).length}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Transferable skills translated
+              Translated skills
             </p>
           </div>
           <Link 
@@ -230,7 +223,7 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                Job Market
+                Job Postings
               </span>
               <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                 <Briefcase size={16} className="w-3.5 h-3.5 shrink-0" />
@@ -240,7 +233,7 @@ export default function DashboardPage() {
               {(jobPostings || []).length}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Real target postings analyzed
+              Target postings added
             </p>
           </div>
           <Link 
@@ -273,7 +266,7 @@ export default function DashboardPage() {
               />
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-              {completedTasks} of {totalTasks} milestones done
+              {completedTasks} of {totalTasks} tasks done
             </p>
           </div>
           <Link 
@@ -290,19 +283,17 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                Outcomes
+                Applications
               </span>
               <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
                 <Send size={16} className="w-3.5 h-3.5 shrink-0" />
               </div>
             </div>
             <div className="text-2xl font-bold text-slate-900 dark:text-white mt-3">
-              {interviews.length > 0 ? `${recentInterviewScore}/${maxInterviewScore}` : '—'}
+              {applications.length}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              {interviews.length > 0
-                ? `Mock score across ${applications.length} logged apps`
-                : `${applications.length} logged applications`}
+              {applications.length === 1 ? '1 application logged' : `${applications.length} applications logged`}
             </p>
           </div>
           <Link 
@@ -315,42 +306,6 @@ export default function DashboardPage() {
         </article>
       </section>
 
-      {/* 3. RECOMMENDED NEXT PRIORITY BANNER */}
-      <section 
-        aria-label="Next Transition Priority"
-        className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs transition-colors"
-      >
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-1.5 flex-1">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400 bg-indigo-100/70 dark:bg-indigo-900/60 px-2.5 py-0.5 rounded-md">
-              Recommended Next Priority
-            </span>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              {criticalGaps[0] ? `Focus on High-Frequency Gap: ${criticalGaps[0].skillName}` : 'Set Up Your Profile & Job Postings'}
-            </h2>
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
-              {criticalGaps[0]?.learningSuggestions || criticalGaps[0]?.recommendation || 'Complete your candidate profile and add target job postings to generate personalized next priorities.'}
-            </p>
-          </div>
-
-          {/* Action buttons with explicit flex container */}
-          <div className="flex items-center gap-3 mt-3 shrink-0">
-            <Link
-              href="/learning-plan"
-              className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors whitespace-nowrap"
-            >
-              Execute Learning Plan
-            </Link>
-            <Link
-              href="/mock-interview"
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700 shadow-2xs transition-colors whitespace-nowrap"
-            >
-              Practice Voice Interview
-            </Link>
-          </div>
-        </div>
-      </section>
-
       {/* 4. 2-COLUMN SPLIT: SKILLS VS. GAPS MATRIX */}
       <section 
         aria-label="Skills and Gap Matrix"
@@ -359,12 +314,9 @@ export default function DashboardPage() {
         {/* Left Card: Your Translated Skills */}
         <article className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4 transition-colors">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles size={16} className="w-4 h-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Your Translated Skills
-              </h3>
-            </div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Translated Skills
+            </h3>
             <Link href="/profile" className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
               View All &rarr;
             </Link>
@@ -388,7 +340,7 @@ export default function DashboardPage() {
                   </div>
 
                   <span className="self-start sm:self-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 shrink-0">
-                    {skill.strengthLevel}
+                    {skill.category}
                   </span>
                 </div>
               ))
@@ -396,7 +348,7 @@ export default function DashboardPage() {
               <div className="text-center py-6 px-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
                 <p>No translated skills yet.</p>
                 <Link href="/profile" className="mt-2 inline-block font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
-                  Add background skills in Profile &rarr;
+                  Add background in Profile &rarr;
                 </Link>
               </div>
             )}
@@ -409,7 +361,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2">
               <AlertTriangle size={16} className="w-4 h-4 shrink-0 text-rose-500 dark:text-rose-400" />
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Top Market Gaps
+                Missing Skills
               </h3>
             </div>
             <Link href="/skill-gaps" className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline">
@@ -426,14 +378,11 @@ export default function DashboardPage() {
                 >
                   <div>
                     <div className="text-xs font-bold text-slate-900 dark:text-white">{gap.skillName}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{gap.recommendation}</div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{gap.reason || gap.recommendation}</div>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="px-2 py-0.5 rounded text-xs bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 font-semibold shrink-0">
-                      Gap
-                    </span>
-                    <span className="text-xs text-rose-600 dark:text-rose-400 shrink-0">
+                    <span className="text-xs text-rose-600 dark:text-rose-400 shrink-0 font-medium">
                       In {gap.frequencyPercent}% of postings
                     </span>
                   </div>
@@ -443,7 +392,7 @@ export default function DashboardPage() {
               <div className="text-center py-6 px-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
                 <p>No skill gaps identified yet.</p>
                 <Link href="/skill-gaps" className="mt-2 inline-block font-semibold text-rose-600 dark:text-rose-400 hover:underline">
-                  Analyze target postings &rarr;
+                  Add target job postings &rarr;
                 </Link>
               </div>
             )}
@@ -459,7 +408,7 @@ export default function DashboardPage() {
         <div className="space-y-2 flex-1">
           <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold">
             <FolderGit2 size={16} className="w-4 h-4 shrink-0" />
-            <span>Target Capstone Portfolio Project</span>
+            <span>Target Capstone Project</span>
           </div>
           <h2 className="text-lg font-bold text-white tracking-tight">
             {learningPlan.portfolioProject?.title || 'Target Capstone Portfolio Project'}
@@ -468,7 +417,6 @@ export default function DashboardPage() {
             {learningPlan.portfolioProject?.tagline || 'Generate a learning plan to reveal your recommended capstone project.'}
           </p>
           
-          {/* Technology / Competency individual tag pills */}
           <div className="flex flex-wrap gap-2 mt-3">
             {(learningPlan.portfolioProject?.demonstratedSkills && learningPlan.portfolioProject.demonstratedSkills.length > 0) ? (
               learningPlan.portfolioProject.demonstratedSkills.map((skill, idx) => (
@@ -477,16 +425,16 @@ export default function DashboardPage() {
                 </span>
               ))
             ) : (
-              <span className="text-xs text-slate-400 italic">Generate a learning plan to reveal project milestones.</span>
+              <span className="text-xs text-slate-400 italic">Generate a learning plan to view project milestones.</span>
             )}
           </div>
         </div>
 
         <Link
           href={learningPlan.weeks.length > 0 ? "/projects" : "/learning-plan"}
-          className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-white text-slate-900 hover:bg-slate-100 transition-colors shrink-0 shadow-xs flex items-center justify-center gap-1.5 self-start md:self-center whitespace-nowrap"
+          className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-white text-slate-900 hover:bg-slate-100 transition-colors shrink-0 shadow-xs flex items-center justify-center gap-1.5 self-start md:self-center whitespace-nowrap cursor-pointer"
         >
-          <span>{learningPlan.weeks.length > 0 ? "View Project Milestones" : "Generate Learning Plan"}</span>
+          <span>{learningPlan.weeks.length > 0 ? "View Project Details" : "Generate Learning Plan"}</span>
           <ArrowRight size={14} className="w-3.5 h-3.5 shrink-0" />
         </Link>
       </section>
